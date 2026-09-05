@@ -54,3 +54,9 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
 ];
 
 export const COMPLIANCE_SOURCE_VERSION = '2026-09-05';
+
+export function isSourceFresh(source: ComplianceSource, asOf = COMPLIANCE_SOURCE_VERSION): boolean {
+  const verifiedAt = Date.parse(source.lastVerified);
+  const registryAsOf = Date.parse(asOf);
+  return Number.isFinite(verifiedAt) && Number.isFinite(registryAsOf) && verifiedAt >= registryAsOf;
+}
