@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
 import { assessCompliance, ComplianceProfile } from './src/complianceEngine';
 import { COMPLIANCE_SOURCES } from './src/data/complianceSources';
+import { getPersistenceReadiness } from './src/domain/persistenceReadiness';
 import { createRateLimiter, isNonEmptyString, MAX_DOCUMENT_CHARS, MAX_MESSAGE_CHARS, MAX_POLICY_FIELD_CHARS } from './src/security/inputGuards';
 
 dotenv.config();
@@ -83,7 +84,17 @@ function validateAuditResult(value: unknown): AuditResult {
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', platform: 'ComplyOS Evidence-First Engine', version: '0.3.0', geminiAvailable: Boolean(getGeminiClient()), complianceEngine: 'evidence-first', timestamp: now() });
+  const persistence = getPersistenceReadiness();
+  res.json({
+    status: 'ok',
+    platform: 'ComplyOS Evidence-First Engine',
+    version: '0.4.0',
+    geminiAvailable: Boolean(getGeminiClient()),
+    complianceEngine: 'evidence-first',
+    persistence,
+    productionReadyForSystemOfRecord: persistence.durable,
+    timestamp: now()
+  });
 });
 
 app.post('/api/compliance/assess', (req, res) => {
