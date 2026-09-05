@@ -5,6 +5,7 @@ import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
 import { assessCompliance, ComplianceProfile } from './src/complianceEngine';
+import { COMPLIANCE_SOURCES } from './src/data/complianceSources';
 
 dotenv.config();
 
@@ -28,24 +29,69 @@ function getGeminiClient(): GoogleGenAI | null {
 }
 
 const now = () => new Date().toISOString();
+const sourceIds = new Set(COMPLIANCE_SOURCES.map(source => source.id));
+
+type AuditRisk = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+type CitationStatus = 'VERIFIED_SOURCE' | 'NEEDS_SOURCE_VERIFICATION' | 'NOT_APPLICABLE';
+interface AuditClause { id: string; clauseTitle: string; originalText: string; riskLevel: AuditRisk; sourceIds: string[]; citationStatus: CitationStatus; issueDescription: string; suggestedFix: string; }
+interface AuditResult { policyTitle: string; jurisdiction: string; summary: string; overallRiskTier: AuditRisk; clauses: AuditClause[]; }
+
+const auditResponseSchema = {
+  type: 'object',
+  properties: {
+    policyTitle: { type: 'string' },
+    jurisdiction: { type: 'string' },
+    summary: { type: 'string' },
+    overallRiskTier: { type: 'string', enum: ['LOW', 'MODERATE', 'HIGH', 'CRITICAL'] },
+    clauses: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          clauseTitle: { type: 'string' },
+          originalText: { type: 'string' },
+          riskLevel: { type: 'string', enum: ['LOW', 'MODERATE', 'HIGH', 'CRITICAL'] },
+          sourceIds: { type: 'array', items: { type: 'string' } },
+          citationStatus: { type: 'string', enum: ['VERIFIED_SOURCE', 'NEEDS_SOURCE_VERIFICATION', 'NOT_APPLICABLE'] },
+          issueDescription: { type: 'string' },
+          suggestedFix: { type: 'string' }
+        },
+        required: ['id', 'clauseTitle', 'originalText', 'riskLevel', 'sourceIds', 'citationStatus', 'issueDescription', 'suggestedFix']
+      }
+    }
+  },
+  required: ['policyTitle', 'jurisdiction', 'summary', 'overallRiskTier', 'clauses']
+};
+
+function validateAuditResult(value: unknown): AuditResult {
+  if (!value || typeof value !== 'object') throw new Error('AI audit returned a non-object response');
+  const result = value as Partial<AuditResult>;
+  if (typeof result.policyTitle !== 'string' || typeof result.jurisdiction !== 'string' || typeof result.summary !== 'string' || !Array.isArray(result.clauses)) {
+    throw new Error('AI audit response failed schema validation');
+  }
+  const clauses = result.clauses.map((clause) => {
+    if (!clause || typeof clause !== 'object') throw new Error('AI audit returned an invalid clause');
+    const candidate = clause as AuditClause;
+    const verifiedIds = Array.isArray(candidate.sourceIds) ? candidate.sourceIds.filter(id => typeof id === 'string' && sourceIds.has(id)) : [];
+    const citationStatus: CitationStatus = candidate.citationStatus === 'NOT_APPLICABLE'
+      ? 'NOT_APPLICABLE'
+      : verifiedIds.length > 0 && candidate.citationStatus === 'VERIFIED_SOURCE'
+        ? 'VERIFIED_SOURCE'
+        : 'NEEDS_SOURCE_VERIFICATION';
+    return { ...candidate, sourceIds: verifiedIds, citationStatus };
+  });
+  return { policyTitle: result.policyTitle, jurisdiction: result.jurisdiction, summary: result.summary, overallRiskTier: result.overallRiskTier || 'MODERATE', clauses };
+}
 
 app.get('/api/health', (_req, res) => {
-  res.json({
-    status: 'ok',
-    platform: 'ComplyOS Evidence-First Engine',
-    version: '0.2.0',
-    geminiAvailable: Boolean(getGeminiClient()),
-    complianceEngine: 'evidence-first',
-    timestamp: now()
-  });
+  res.json({ status: 'ok', platform: 'ComplyOS Evidence-First Engine', version: '0.3.0', geminiAvailable: Boolean(getGeminiClient()), complianceEngine: 'evidence-first', timestamp: now() });
 });
 
 app.post('/api/compliance/assess', (req, res) => {
   try {
     const profile = req.body as ComplianceProfile;
-    if (!profile || typeof profile.employeeCount !== 'number' || !profile.jurisdiction) {
-      return res.status(400).json({ error: 'jurisdiction and numeric employeeCount are required' });
-    }
+    if (!profile || typeof profile.employeeCount !== 'number' || !profile.jurisdiction) return res.status(400).json({ error: 'jurisdiction and numeric employeeCount are required' });
     return res.json(assessCompliance(profile));
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Assessment failed' });
@@ -54,28 +100,19 @@ app.post('/api/compliance/assess', (req, res) => {
 
 app.post('/api/audit', async (req, res) => {
   const { documentText, policyTitle = 'Document', jurisdiction = 'India - National' } = req.body ?? {};
-  if (!documentText || typeof documentText !== 'string') {
-    return res.status(400).json({ error: 'documentText string is required' });
-  }
-
+  if (!documentText || typeof documentText !== 'string') return res.status(400).json({ error: 'documentText string is required' });
   const ai = getGeminiClient();
-  if (!ai) {
-    return res.status(503).json({
-      error: 'AI audit is unavailable because GEMINI_API_KEY is not configured.',
-      code: 'AI_NOT_CONFIGURED',
-      guidance: 'Use the Compliance Control Center for deterministic evidence-first assessment.'
-    });
-  }
+  if (!ai) return res.status(503).json({ error: 'AI audit is unavailable because GEMINI_API_KEY is not configured.', code: 'AI_NOT_CONFIGURED', guidance: 'Use the Compliance Control Center for deterministic evidence-first assessment.' });
 
   try {
-    const prompt = `You are an HR compliance document analysis assistant. Analyze the document below for ${jurisdiction}. Do not invent statutes, citations, deadlines, thresholds or penalties. If a legal proposition cannot be verified from the supplied authoritative source context, mark it as NEEDS_SOURCE_VERIFICATION. Distinguish document-level observations from legal conclusions. Return JSON with: policyTitle, jurisdiction, summary, overallRiskTier, clauses[]. Each clause must contain id, clauseTitle, originalText, riskLevel, citation, citationStatus, issueDescription, suggestedFix. citationStatus must be VERIFIED_SOURCE, NEEDS_SOURCE_VERIFICATION, or NOT_APPLICABLE. Do not claim that the document is legally compliant solely because a clause looks reasonable.\n\nPolicy: ${policyTitle}\nDocument:\n${documentText}`;
-    const response = await ai.models.generateContent({ model: 'gemini-3.7-flash', contents: prompt });
-    const raw = response.text || '';
-    let parsed: unknown;
-    try { parsed = JSON.parse(raw); } catch { parsed = { rawText: raw }; }
-    return res.json({ policyTitle, jurisdiction, result: parsed, auditedAt: now(), mode: 'AI_ASSISTED_REVIEW', disclaimer: 'AI analysis is an assistive review and is not a legal opinion or certification.' });
+    const sourceContext = COMPLIANCE_SOURCES.map(source => `${source.id}: ${source.title} (${source.authority}; ${source.url})`).join('\n');
+    const prompt = `You are an HR compliance document analysis assistant. Analyze the document for ${jurisdiction}. Do not invent statutes, citations, deadlines, thresholds or penalties. Only mark citationStatus VERIFIED_SOURCE when the proposition is directly supported by one or more supplied source IDs. Otherwise use NEEDS_SOURCE_VERIFICATION. Distinguish document-level observations from legal conclusions. A source ID is not proof by itself; the human reviewer must verify the cited source.\n\nAuthoritative source registry:\n${sourceContext}\n\nPolicy: ${policyTitle}\nDocument:\n${documentText}`;
+    const response = await ai.models.generateContent({ model: 'gemini-3.7-flash', contents: prompt, config: { responseMimeType: 'application/json', responseSchema: auditResponseSchema } });
+    const parsed = JSON.parse(response.text || '{}');
+    const result = validateAuditResult(parsed);
+    return res.json({ policyTitle, jurisdiction, result, auditedAt: now(), mode: 'AI_ASSISTED_REVIEW', disclaimer: 'AI analysis is assistive. VERIFIED_SOURCE means the model supplied a known registry ID; it does not replace human verification of the cited primary source.' });
   } catch (error) {
-    return res.status(502).json({ error: error instanceof Error ? error.message : 'Audit execution failed' });
+    return res.status(502).json({ error: error instanceof Error ? error.message : 'Audit execution failed', code: 'AI_AUDIT_INVALID' });
   }
 });
 
