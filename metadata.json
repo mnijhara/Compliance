@@ -1,0 +1,6 @@
+{
+  "name": "CmpliHR.ai - Indian Labor Laws & AI HR Compliance Platform",
+  "description": "Autonomous AI HR Compliance Intelligence Platform for India and global enterprises. Complete coverage of Indian Labour Laws, 4 New Labour Codes, POSH, EPF/ESI, Gratuity, and State Shops & Establishments Acts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
