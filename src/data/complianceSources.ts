@@ -65,9 +65,9 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     title: 'Delhi Shops & Establishments Act, 1954',
     authority: 'Labour Department, Government of NCT of Delhi',
     jurisdiction: 'India - Delhi',
-    url: 'https://labour.delhi.gov.in/labour/delhi-shops-act-1954',
+    url: 'https://labour.delhi.gov.in/labour/delhi-shops-and-establishments-act1954',
     lastVerified: '2026-09-06',
-    notes: 'Primary Delhi departmental publication. Current notifications and exemptions must be checked before applying any provision.'
+    notes: 'Official Delhi departmental publication. Current notifications and exemptions must be checked before applying any provision.'
   },
   {
     id: 'karnataka-labour-district-department',
