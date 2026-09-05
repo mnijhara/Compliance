@@ -9,7 +9,7 @@ import { StatutoryFormVault } from './components/StatutoryFormVault';
 import { AiAuditStudio } from './components/AiAuditStudio';
 import { AgenticWorkflows } from './components/AgenticWorkflows';
 import { PolicyGenerator } from './components/PolicyGenerator';
-import { ChroDashboard } from './components/ChroDashboard';
+import { ComplianceControlCenter } from './components/ComplianceControlCenter';
 import { PricingPage } from './components/PricingPage';
 import { FloatingAiAssistant } from './components/FloatingAiAssistant';
 
@@ -18,10 +18,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Navigation Header */}
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {/* Main Page View Routing */}
       <main className="flex-1">
         {activeTab === 'home' && <LandingPage setActiveTab={setActiveTab} onOpenAudit={() => setActiveTab('ai-audit')} />}
         {activeTab === 'labor-laws' && <LaborLawEngine />}
@@ -31,16 +28,11 @@ export default function App() {
         {activeTab === 'ai-audit' && <AiAuditStudio />}
         {activeTab === 'agentic-workflows' && <AgenticWorkflows />}
         {activeTab === 'policy-generator' && <PolicyGenerator />}
-        {activeTab === 'workspace' && <ChroDashboard />}
+        {activeTab === 'workspace' && <ComplianceControlCenter />}
         {activeTab === 'pricing' && <PricingPage />}
       </main>
-
-      {/* Floating AI Compliance Agent */}
       <FloatingAiAssistant />
-
-      {/* Footer */}
       <Footer setActiveTab={setActiveTab} />
     </div>
   );
 }
-
