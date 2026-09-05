@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { assessCompliance } from '../src/complianceEngine';
 import { getJurisdictionProfile } from '../src/data/jurisdictionProfiles';
-import { isSourceFresh } from '../src/data/complianceSources';
+import { COMPLIANCE_SOURCE_VERSION, isSourceFresh } from '../src/data/complianceSources';
 import { evidenceCanSupportPass, isEvidenceCurrent, EvidenceItem } from '../src/domain/evidence';
 import { canonicalAuditPayload } from '../src/domain/auditTrail';
 import { createRateLimiter, isNonEmptyString, MAX_DOCUMENT_CHARS } from '../src/security/inputGuards';
@@ -25,9 +25,22 @@ test('state profiles require authoritative source verification before conclusion
   const profile = getJurisdictionProfile('India - Maharashtra');
   assert.equal(profile?.status, 'SOURCE_REQUIRED');
   assert.ok(profile?.authoritativeSourceTypes.length);
+  assert.ok(profile?.authoritativeSourceIds.includes('maharashtra-labour-commissioner'));
+});
+
+test('all configured state profiles map to known source registry IDs', async () => {
+  const { COMPLIANCE_SOURCES } = await import('../src/data/complianceSources');
+  const sourceIds = new Set(COMPLIANCE_SOURCES.map(source => source.id));
+  for (const jurisdiction of ['India - Delhi', 'India - Karnataka', 'India - Maharashtra']) {
+    const profile = getJurisdictionProfile(jurisdiction);
+    assert.ok(profile);
+    assert.ok(profile.authoritativeSourceIds.length > 0);
+    for (const sourceId of profile.authoritativeSourceIds) assert.equal(sourceIds.has(sourceId), true, `${jurisdiction} references unknown source ${sourceId}`);
+  }
 });
 
 test('source freshness compares actual dates rather than strings', () => {
+  assert.equal(COMPLIANCE_SOURCE_VERSION, '2026-09-06');
   const source = { id: 'test', title: 'test', authority: 'test', jurisdiction: 'India - National', url: 'https://example.com', lastVerified: '2026-09-10', notes: '' };
   assert.equal(isSourceFresh(source, '2026-09-05'), true);
   assert.equal(isSourceFresh({ ...source, lastVerified: '2026-08-31' }, '2026-09-05'), false);
