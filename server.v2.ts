@@ -6,11 +6,13 @@ import dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
 import { assessCompliance, ComplianceProfile } from './src/complianceEngine';
 import { COMPLIANCE_SOURCES } from './src/data/complianceSources';
+import { createPersistence } from './src/domain/persistence';
 
 dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+const persistence = createPersistence();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '10mb' }));
 app.use((_req, res, next) => {
@@ -30,6 +32,7 @@ function getGeminiClient(): GoogleGenAI | null {
 
 const now = () => new Date().toISOString();
 const sourceIds = new Set(COMPLIANCE_SOURCES.map(source => source.id));
+const persistenceMode = process.env.COMPLYOS_PERSISTENCE === 'memory' ? 'memory-development-only' : 'not-configured';
 
 type AuditRisk = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 type CitationStatus = 'VERIFIED_SOURCE' | 'NEEDS_SOURCE_VERIFICATION' | 'NOT_APPLICABLE';
@@ -85,7 +88,7 @@ function validateAuditResult(value: unknown): AuditResult {
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', platform: 'ComplyOS Evidence-First Engine', version: '0.3.0', geminiAvailable: Boolean(getGeminiClient()), complianceEngine: 'evidence-first', timestamp: now() });
+  res.json({ status: 'ok', platform: 'ComplyOS Evidence-First Engine', version: '0.4.0', geminiAvailable: Boolean(getGeminiClient()), complianceEngine: 'evidence-first', persistence: persistenceMode, timestamp: now() });
 });
 
 app.post('/api/compliance/assess', (req, res) => {
