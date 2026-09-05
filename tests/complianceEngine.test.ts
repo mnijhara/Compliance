@@ -5,6 +5,7 @@ import { getJurisdictionProfile } from '../src/data/jurisdictionProfiles';
 import { isSourceFresh } from '../src/data/complianceSources';
 import { evidenceCanSupportPass, isEvidenceCurrent, EvidenceItem } from '../src/domain/evidence';
 import { canonicalAuditPayload } from '../src/domain/auditTrail';
+import { createRateLimiter, isNonEmptyString, MAX_DOCUMENT_CHARS } from '../src/security/inputGuards';
 
 test('India assessment never turns missing evidence into PASS', () => {
   const result = assessCompliance({ jurisdiction: 'India - National', employeeCount: 25, establishmentType: 'office', hasContractWorkers: true, hasNightShift: true });
@@ -49,4 +50,18 @@ test('audit payload canonicalization is deterministic', () => {
   const event = { id: 'audit-1', tenantId: 'tenant-1', actorId: 'user-1', action: 'ASSESSMENT_CREATED' as const, entityType: 'assessment', entityId: 'assessment-1', occurredAt: '2026-09-05T12:00:00Z', metadata: { sourceVersion: '2026-09-05' }, previousHash: null };
   assert.equal(canonicalAuditPayload(event), canonicalAuditPayload({ ...event }));
   assert.match(canonicalAuditPayload(event), /"tenantId":"tenant-1"/);
+});
+
+test('API input guards reject empty or oversized documents', () => {
+  assert.equal(isNonEmptyString('policy', MAX_DOCUMENT_CHARS), true);
+  assert.equal(isNonEmptyString('   ', MAX_DOCUMENT_CHARS), false);
+  assert.equal(isNonEmptyString('x'.repeat(MAX_DOCUMENT_CHARS + 1), MAX_DOCUMENT_CHARS), false);
+});
+
+test('rate limiter allows the configured burst and rejects the next request', () => {
+  const limiter = createRateLimiter(2, 60_000);
+  assert.equal(limiter('tenant-or-ip', 1_000), true);
+  assert.equal(limiter('tenant-or-ip', 1_001), true);
+  assert.equal(limiter('tenant-or-ip', 1_002), false);
+  assert.equal(limiter('tenant-or-ip', 61_001), true);
 });
