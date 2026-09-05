@@ -3,13 +3,23 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import { randomUUID } from 'crypto';
 import { assessCompliance, ComplianceProfile } from './src/complianceEngine';
 
 dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+app.disable('x-powered-by');
 app.use(express.json({ limit: '10mb' }));
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('X-Request-Id', randomUUID());
+  next();
+});
 
 function getGeminiClient(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
@@ -22,8 +32,8 @@ const now = () => new Date().toISOString();
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
-    platform: 'CmpliHR.ai Evidence-First Engine',
-    version: '0.1.0',
+    platform: 'ComplyOS Evidence-First Engine',
+    version: '0.2.0',
     geminiAvailable: Boolean(getGeminiClient()),
     complianceEngine: 'evidence-first',
     timestamp: now()
@@ -63,14 +73,7 @@ app.post('/api/audit', async (req, res) => {
     const raw = response.text || '';
     let parsed: unknown;
     try { parsed = JSON.parse(raw); } catch { parsed = { rawText: raw }; }
-    return res.json({
-      policyTitle,
-      jurisdiction,
-      result: parsed,
-      auditedAt: now(),
-      mode: 'AI_ASSISTED_REVIEW',
-      disclaimer: 'AI analysis is an assistive review and is not a legal opinion or certification.'
-    });
+    return res.json({ policyTitle, jurisdiction, result: parsed, auditedAt: now(), mode: 'AI_ASSISTED_REVIEW', disclaimer: 'AI analysis is an assistive review and is not a legal opinion or certification.' });
   } catch (error) {
     return res.status(502).json({ error: error instanceof Error ? error.message : 'Audit execution failed' });
   }
@@ -79,17 +82,9 @@ app.post('/api/audit', async (req, res) => {
 app.post('/api/policy-generate', async (req, res) => {
   const { policyType = 'HR Policy', jurisdiction = 'India - National', companyName = 'Company', employeeCount = 1, specialProvisions = '' } = req.body ?? {};
   const ai = getGeminiClient();
-  if (!ai) {
-    return res.status(503).json({
-      error: 'Policy generation requires GEMINI_API_KEY.',
-      code: 'AI_NOT_CONFIGURED'
-    });
-  }
+  if (!ai) return res.status(503).json({ error: 'Policy generation requires GEMINI_API_KEY.', code: 'AI_NOT_CONFIGURED' });
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
-      contents: `Draft a professional HR policy for ${companyName}. Policy: ${policyType}. Jurisdiction: ${jurisdiction}. Employees: ${employeeCount}. Special provisions: ${specialProvisions || 'None'}. Use conservative legal language. Do not state that the policy is legally binding or compliant without source verification. Include a Sources / Verification Required section and clearly identify propositions requiring local counsel or current rules verification.`
-    });
+    const response = await ai.models.generateContent({ model: 'gemini-3.7-flash', contents: `Draft a professional HR policy for ${companyName}. Policy: ${policyType}. Jurisdiction: ${jurisdiction}. Employees: ${employeeCount}. Special provisions: ${specialProvisions || 'None'}. Use conservative legal language. Do not state that the policy is legally binding or compliant without source verification. Include a Sources / Verification Required section and clearly identify propositions requiring local counsel or current rules verification.` });
     return res.json({ policyTitle: `${policyType} - ${companyName}`, jurisdiction, content: response.text || '', generatedAt: now(), verificationRequired: true });
   } catch (error) {
     return res.status(502).json({ error: error instanceof Error ? error.message : 'Policy generation failed' });
@@ -100,16 +95,9 @@ app.post('/api/chat', async (req, res) => {
   const { message } = req.body ?? {};
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message is required' });
   const ai = getGeminiClient();
-  if (!ai) {
-    return res.json({ reply: 'Nova is in evidence-first offline mode. Configure GEMINI_API_KEY for AI-assisted explanations. For a defensible compliance assessment, use the Compliance Control Center and upload the requested evidence.' });
-  }
+  if (!ai) return res.json({ reply: 'Nova is in evidence-first offline mode. Configure GEMINI_API_KEY for AI-assisted explanations. For a defensible compliance assessment, use the Compliance Control Center and upload the requested evidence.' });
   try {
-    const chat = ai.chats.create({
-      model: 'gemini-3.7-flash',
-      config: {
-        systemInstruction: 'You are Nova, an HR compliance research assistant. Never invent legal citations. State when a source must be verified. Separate factual source summaries from legal interpretation. Encourage review of current official legislation/rules for material decisions.'
-      }
-    });
+    const chat = ai.chats.create({ model: 'gemini-3.7-flash', config: { systemInstruction: 'You are Nova, an HR compliance research assistant. Never invent legal citations. State when a source must be verified. Separate factual source summaries from legal interpretation. Encourage review of current official legislation/rules for material decisions.' } });
     const result = await chat.sendMessage({ message });
     return res.json({ reply: result.text || '', mode: 'AI_ASSISTED_RESEARCH' });
   } catch (error) {
@@ -119,14 +107,7 @@ app.post('/api/chat', async (req, res) => {
 
 app.post('/api/agent-run', (req, res) => {
   const agentId = typeof req.body?.agentId === 'string' ? req.body.agentId : 'compliance-assessment-agent';
-  const profile: ComplianceProfile = {
-    jurisdiction: req.body?.profile?.jurisdiction || 'India - National',
-    employeeCount: Number(req.body?.profile?.employeeCount ?? 0),
-    establishmentType: req.body?.profile?.establishmentType || 'office',
-    hasContractWorkers: Boolean(req.body?.profile?.hasContractWorkers),
-    hasNightShift: Boolean(req.body?.profile?.hasNightShift),
-    industry: req.body?.profile?.industry
-  };
+  const profile: ComplianceProfile = { jurisdiction: req.body?.profile?.jurisdiction || 'India - National', employeeCount: Number(req.body?.profile?.employeeCount ?? 0), establishmentType: req.body?.profile?.establishmentType || 'office', hasContractWorkers: Boolean(req.body?.profile?.hasContractWorkers), hasNightShift: Boolean(req.body?.profile?.hasNightShift), industry: req.body?.profile?.industry };
   const assessment = assessCompliance(profile);
   const timestamp = new Date().toLocaleTimeString();
   const logs = [
@@ -147,7 +128,7 @@ async function startServer() {
     app.use(express.static(distPath));
     app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
   }
-  app.listen(PORT, '0.0.0.0', () => console.log(`CmpliHR.ai running on port ${PORT}`));
+  app.listen(PORT, '0.0.0.0', () => console.log(`ComplyOS running on port ${PORT}`));
 }
 
 startServer();
