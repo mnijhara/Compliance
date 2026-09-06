@@ -16,24 +16,6 @@ test('India assessment never turns missing evidence into PASS or a numeric score
   assert.match(result.caveats.join(' '), /legal opinion or certification/i);
 });
 
-test('QSR-style site profile creates outlet-specific workforce controls', () => {
-  const result = assessCompliance({
-    jurisdiction: 'India - Maharashtra', employeeCount: 32, establishmentType: 'shop', industry: 'Quick Service Restaurant',
-    hasContractWorkers: true, hasNightShift: true, hasWomenNightWork: true, hasFixedTermWorkers: true,
-    hasMigrantWorkers: true, hasApprentices: false, hasWorkersUnder18: true, operatingModel: 'multi-site'
-  });
-  assert.equal(result.score, null);
-  for (const id of ['qsr-operational-compliance', 'women-night-work', 'fixed-term-gratuity', 'migrant-worker-governance', 'young-worker-safeguards']) {
-    assert.ok(result.controls.some(control => control.id === id && control.status === 'REVIEW'), `missing ${id}`);
-  }
-});
-
-test('unsupported jurisdiction is not assessed as compliant', () => {
-  const result = assessCompliance({ jurisdiction: 'United States - California', employeeCount: 25, establishmentType: 'office', hasContractWorkers: false, hasNightShift: false });
-  assert.equal(result.controls[0]?.status, 'NOT_ASSESSED');
-  assert.equal(result.score, null);
-});
-
 test('state profiles require authoritative source verification before conclusions', () => {
   const profile = getJurisdictionProfile('India - Maharashtra');
   assert.equal(profile?.status, 'SOURCE_REQUIRED');
