@@ -32,7 +32,7 @@ function isHttpsUrl(value: string): boolean {
 }
 
 function isIsoDate(value: string): boolean {
-  return /^\\d{4}-\\d{2}-\\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`));
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`));
 }
 
 export function validateSourceRegistry(sources: ComplianceSource[]): SourceRegistryIntegrity {
