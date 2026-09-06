@@ -64,9 +64,9 @@ jobs:
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const health = JSON.parse(fs.readFileSync('/tmp/health.json', 'utf8'));
-          if (!health.ok) throw new Error('Health endpoint did not report ok=true');
+          if (health.status !== 'ok') throw new Error(`Health endpoint status was ${health.status ?? 'missing'}`);
           if (!health.persistence) throw new Error('Health endpoint missing persistence contract');
-          if (!health.sourceRegistry) throw new Error('Health endpoint missing source registry contract');
+          if (!health.sourceRegistryIntegrity) throw new Error('Health endpoint missing source registry integrity contract');
           NODE
 
           curl --fail --silent --show-error http://127.0.0.1:3000/ > /tmp/home.html
