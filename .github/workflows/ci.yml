@@ -29,3 +29,41 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
+      - name: Production runtime smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_ENV=production
+          export PORT=4173
+          npm start > /tmp/complyos-server.log 2>&1 &
+          server_pid=$!
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:4173/api/health > /tmp/health.json; then
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat /tmp/complyos-server.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          test -s /tmp/health.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const health = JSON.parse(fs.readFileSync('/tmp/health.json', 'utf8'));
+          if (!['ok', 'degraded'].includes(health.status)) throw new Error('Invalid health status');
+          if (health.complianceEngine !== 'evidence-first') throw new Error('Unexpected compliance engine');
+          if (!health.persistence || typeof health.persistence !== 'object') throw new Error('Missing persistence readiness');
+          if (!health.sourceRegistryIntegrity || typeof health.sourceRegistryIntegrity.valid !== 'boolean') throw new Error('Missing source registry integrity');
+          if (!health.aiProxy || typeof health.aiProxy !== 'object') throw new Error('Missing AI proxy status');
+          NODE
+
+          curl --fail --silent --show-error http://127.0.0.1:4173/ > /tmp/index.html
+          grep -q '<html' /tmp/index.html
