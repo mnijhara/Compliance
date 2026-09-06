@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { assessCompliance, ComplianceProfile } from './src/complianceEngine';
 import { COMPLIANCE_SOURCES } from './src/data/complianceSources';
 import { getPersistenceReadiness } from './src/domain/persistenceReadiness';
+import { validateSourceRegistry } from './src/domain/sourceRegistry';
 import { createRateLimiter, isNonEmptyString, MAX_DOCUMENT_CHARS, MAX_MESSAGE_CHARS, MAX_POLICY_FIELD_CHARS } from './src/security/inputGuards';
 
 dotenv.config();
@@ -38,6 +39,7 @@ function getGeminiClient(): GoogleGenAI | null {
 
 const now = () => new Date().toISOString();
 const sourceIds = new Set(COMPLIANCE_SOURCES.map(source => source.id));
+const sourceRegistryIntegrity = validateSourceRegistry(COMPLIANCE_SOURCES);
 
 type AuditRisk = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 type CitationStatus = 'VERIFIED_SOURCE' | 'NEEDS_SOURCE_VERIFICATION' | 'NOT_APPLICABLE';
@@ -85,14 +87,16 @@ function validateAuditResult(value: unknown): AuditResult {
 
 app.get('/api/health', (_req, res) => {
   const persistence = getPersistenceReadiness();
+  const status = sourceRegistryIntegrity.valid ? 'ok' : 'degraded';
   res.json({
-    status: 'ok',
+    status,
     platform: 'ComplyOS Evidence-First Engine',
-    version: '0.4.0',
+    version: '0.5.0',
     geminiAvailable: Boolean(getGeminiClient()),
     complianceEngine: 'evidence-first',
     persistence,
-    productionReadyForSystemOfRecord: persistence.durable,
+    sourceRegistryIntegrity,
+    productionReadyForSystemOfRecord: persistence.durable && sourceRegistryIntegrity.valid,
     timestamp: now()
   });
 });
