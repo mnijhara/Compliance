@@ -105,7 +105,7 @@ export function evaluateWorkflowStep(
   const sourceById = new Map(sources.map(source => [source.id, source]));
   const verifiedSourceIds = step.sourceIds.filter(id => {
     const source = sourceById.get(id);
-    return Boolean(source && isSourceFresh(source));
+    return Boolean(source && isSourceFresh(source, asOf.toISOString().slice(0, 10)));
   });
 
   if (currentEvidence.length === 0) reasons.push('CURRENT_EVIDENCE_REQUIRED');
