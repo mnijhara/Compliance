@@ -13,7 +13,7 @@ test('India assessment never turns missing evidence into PASS or a numeric score
   assert.ok(result.controls.some(control => control.id === 'contract-labour' && control.status === 'REVIEW'));
   assert.ok(result.controls.some(control => control.id === 'night-shift-safety' && control.status === 'REVIEW'));
   assert.equal(result.score, null);
-  assert.match(result.caveats.join(' '), /legal opinion or certification/i);
+  assert.match(result.caveats.join(' '), /legal opinion, certification or filing submission/i);
 });
 
 test('state profiles require authoritative source verification before conclusions', () => {
@@ -57,7 +57,7 @@ test('expired or rejected evidence cannot support a pass', () => {
 test('audit payload canonicalization is deterministic', () => {
   const event = { id: 'audit-1', tenantId: 'tenant-1', actorId: 'user-1', action: 'ASSESSMENT_CREATED' as const, entityType: 'assessment', entityId: 'assessment-1', occurredAt: '2026-09-05T12:00:00Z', metadata: { sourceVersion: '2026-09-05' }, previousHash: null };
   assert.equal(canonicalAuditPayload(event), canonicalAuditPayload({ ...event }));
-  assert.match(canonicalAuditPayload(event), /"tenantId":"tenant-1"/);
+  assert.match(canonicalAuditPayload(event), /\"tenantId\":\"tenant-1\"/);
 });
 
 test('API input guards reject empty or oversized documents', () => {
