@@ -45,6 +45,15 @@ test('regulatory reachability marks healthy official sources reachable', async (
   assert.equal(checked.sources[0]?.httpStatus, 200);
 });
 
+test('regulatory reachability treats HEAD-not-supported as reachable', async () => {
+  const sources = [source('2026-09-06')];
+  const snapshot = evaluateRegulatorySources(sources, '2026-09-06', 30);
+  const checked = await checkRegulatorySourceReachability(snapshot, sources, async () => new Response(null, { status: 405 }));
+  assert.equal(checked.status, 'READY');
+  assert.equal(checked.sources[0]?.reachability, 'REACHABLE');
+  assert.equal(checked.sources[0]?.httpStatus, 405);
+});
+
 test('regulatory reachability marks unavailable sources REVIEW', async () => {
   const sources = [source('2026-09-06')];
   const snapshot = evaluateRegulatorySources(sources, '2026-09-06', 30);
@@ -67,4 +76,17 @@ test('regulatory reachability rejects non-HTTPS registry URLs', async () => {
   assert.equal(checked.status, 'REVIEW');
   assert.deepEqual(checked.unreachableSourceIds, ['test-source']);
   assert.match(checked.sources[0]?.reachabilityError ?? '', /HTTPS/);
+});
+
+test('regulatory reachability does not follow redirects', async () => {
+  const sources = [source('2026-09-06')];
+  const snapshot = evaluateRegulatorySources(sources, '2026-09-06', 30);
+  let requestedInit: RequestInit | undefined;
+  const checked = await checkRegulatorySourceReachability(snapshot, sources, async (_input, init) => {
+    requestedInit = init;
+    return new Response(null, { status: 302, headers: { location: 'http://internal.example/' } });
+  });
+  assert.equal(checked.status, 'READY');
+  assert.equal(checked.sources[0]?.reachability, 'REACHABLE');
+  assert.equal(requestedInit?.redirect, 'manual');
 });
