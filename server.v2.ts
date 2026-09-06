@@ -1,6 +1,5 @@
 import express from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
@@ -174,6 +173,9 @@ app.post('/api/agent-run', (req, res) => {
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    // Keep Vite out of the production startup path. The server is bundled as
+    // CommonJS for Hostinger, while Vite's Node API is ESM-first in Vite 6.
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
     app.use(vite.middlewares);
   } else {
@@ -184,4 +186,7 @@ async function startServer() {
   app.listen(PORT, '0.0.0.0', () => console.log(`ComplyOS running on port ${PORT}`));
 }
 
-startServer();
+startServer().catch((error) => {
+  console.error('ComplyOS startup failed:', error);
+  process.exitCode = 1;
+});
