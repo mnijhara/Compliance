@@ -1,29 +1,38 @@
-const DEFAULT_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.7-flash';
 const DEFAULT_PROXY_URL = 'https://getjobready-ai-proxy.mnijhara.workers.dev';
-const WORKER_URL = (process.env.AI_PROXY_URL?.trim() || DEFAULT_PROXY_URL).replace(/\/$/, '');
-const GENERATE_URL = `${WORKER_URL}/generate`;
+
+function getProxyUrl(): string {
+  return (process.env.AI_PROXY_URL?.trim() || DEFAULT_PROXY_URL).replace(/\/$/, '');
+}
+
+function getModel(): string {
+  return process.env.GEMINI_MODEL?.trim() || 'gemini-3.7-flash';
+}
 
 // Gemini keys remain behind the Cloudflare Worker. ComplyOS never receives or stores them.
 let workerFailures = 0;
 let workerCooldownUntil = 0;
 let workerRequests = 0;
 let lastWorkerUse = 0;
+let lastSuccessfulWorkerUse = 0;
 
 export function configured(): boolean {
-  return Boolean(WORKER_URL);
+  return Boolean(getProxyUrl());
 }
 
 export function publicStatus() {
-  const healthy = Date.now() >= workerCooldownUntil;
+  const configuredProxy = configured();
+  const cooldown = Date.now() < workerCooldownUntil;
   return {
-    configured: configured(),
-    keySlots: configured() ? 5 : 0,
-    healthySlots: configured() && healthy ? 5 : 0,
-    model: DEFAULT_MODEL,
-    router: 'Cloudflare 5-key round-robin + automatic failover',
-    proxy: WORKER_URL,
+    configured: configuredProxy,
+    // Configuration is not proof that five provider keys are present or healthy.
+    keySlots: configuredProxy ? 5 : 0,
+    healthySlots: configuredProxy && !cooldown && lastSuccessfulWorkerUse > 0 ? 5 : 0,
+    model: getModel(),
+    router: 'Cloudflare 5-key automatic failover',
+    proxy: getProxyUrl(),
     requests: workerRequests,
     lastRequestAt: lastWorkerUse || null,
+    lastSuccessfulRequestAt: lastSuccessfulWorkerUse || null,
   };
 }
 
@@ -40,6 +49,7 @@ function markFailure(status: number) {
 function markSuccess() {
   workerFailures = 0;
   workerCooldownUntil = 0;
+  lastSuccessfulWorkerUse = Date.now();
 }
 
 function parseJson(text: string): unknown {
@@ -79,7 +89,7 @@ export async function generate(prompt: string, options: GenerateOptions = {}): P
 
   const suppliedParts = options.parts || (prompt ? [{ text: prompt }] : []);
   const parts = suppliedParts.length ? suppliedParts : [{ text: prompt || '' }];
-  const model = options.model || DEFAULT_MODEL;
+  const model = options.model || getModel();
   const generationConfig = {
     responseMimeType: options.responseMimeType || 'application/json',
     maxOutputTokens: options.maxOutputTokens || 6000,
@@ -93,11 +103,12 @@ export async function generate(prompt: string, options: GenerateOptions = {}): P
   workerRequests += 1;
   lastWorkerUse = Date.now();
   const maxAttempts = 3;
+  const proxyUrl = `${getProxyUrl()}/generate`;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const response = await fetch(GENERATE_URL, {
+      const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
