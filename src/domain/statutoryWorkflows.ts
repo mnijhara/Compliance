@@ -1,3 +1,6 @@
+import { isEvidenceCurrent, EvidenceItem } from './evidence';
+import { ComplianceSource, isSourceFresh } from '../data/complianceSources';
+
 export type StatutoryWorkflowStatus = 'NOT_STARTED' | 'EVIDENCE_REQUIRED' | 'IN_REVIEW' | 'READY_FOR_APPROVAL' | 'COMPLETED';
 
 export interface StatutoryWorkflowStep {
@@ -16,6 +19,15 @@ export interface StatutoryWorkflowDefinition {
   description: string;
   steps: StatutoryWorkflowStep[];
   disclaimer: string;
+}
+
+export type WorkflowGateStatus = 'BLOCKED' | 'READY_FOR_REVIEW';
+
+export interface WorkflowStepGate {
+  status: WorkflowGateStatus;
+  reasons: string[];
+  currentEvidenceIds: string[];
+  verifiedSourceIds: string[];
 }
 
 /**
@@ -73,4 +85,39 @@ export function getStatutoryWorkflow(id: string): StatutoryWorkflowDefinition | 
 
 export function workflowCanAdvance(step: StatutoryWorkflowStep): boolean {
   return step.requiredEvidence.length > 0 && step.verificationRequired && step.status !== 'COMPLETED';
+}
+
+/**
+ * Evaluate whether a workflow step has enough current evidence and source
+ * freshness to enter human review. This is a gate, not a legal conclusion.
+ * Evidence must belong to the step via controlId and be accepted/current.
+ * Every configured source must be present and freshly verified; an empty source
+ * list is intentionally blocked for steps that require statutory verification.
+ */
+export function evaluateWorkflowStep(
+  step: StatutoryWorkflowStep,
+  evidence: EvidenceItem[],
+  sources: ComplianceSource[],
+  asOf = new Date()
+): WorkflowStepGate {
+  const reasons: string[] = [];
+  const currentEvidence = evidence.filter(item => item.controlId === step.id && isEvidenceCurrent(item, asOf));
+  const sourceById = new Map(sources.map(source => [source.id, source]));
+  const verifiedSourceIds = step.sourceIds.filter(id => {
+    const source = sourceById.get(id);
+    return Boolean(source && isSourceFresh(source));
+  });
+
+  if (currentEvidence.length === 0) reasons.push('CURRENT_EVIDENCE_REQUIRED');
+  if (step.verificationRequired && step.sourceIds.length === 0) reasons.push('AUTHORITATIVE_SOURCE_REQUIRED');
+  if (step.sourceIds.some(id => !sourceById.has(id))) reasons.push('SOURCE_REGISTRY_ID_UNKNOWN');
+  if (step.sourceIds.some(id => !verifiedSourceIds.includes(id))) reasons.push('AUTHORITATIVE_SOURCE_FRESHNESS_REQUIRED');
+  if (step.status === 'COMPLETED') reasons.push('STEP_ALREADY_COMPLETED');
+
+  return {
+    status: reasons.length === 0 ? 'READY_FOR_REVIEW' : 'BLOCKED',
+    reasons,
+    currentEvidenceIds: currentEvidence.map(item => item.id),
+    verifiedSourceIds
+  };
 }
