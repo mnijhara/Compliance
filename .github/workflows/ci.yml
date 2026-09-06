@@ -71,8 +71,13 @@ jobs:
           if (!health.sourceRegistryIntegrity) throw new Error('Health endpoint missing source registry integrity contract');
           NODE
 
-          curl --fail --silent --show-error http://127.0.0.1:3000/ > /tmp/home.html
+          curl --fail --silent --show-error -D /tmp/headers.txt -o /tmp/home.html http://127.0.0.1:3000/
           grep -qi '<!doctype html' /tmp/home.html
+          grep -qi '^x-content-type-options: nosniff' /tmp/headers.txt
+          grep -qi '^x-frame-options: DENY' /tmp/headers.txt
+          grep -qi '^referrer-policy: strict-origin-when-cross-origin' /tmp/headers.txt
+          grep -qi '^permissions-policy:' /tmp/headers.txt
+          grep -qi '^x-request-id:' /tmp/headers.txt
 
           echo "Running Playwright Chromium UI verification against the built production server"
           npm run test:browser
