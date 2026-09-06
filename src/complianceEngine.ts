@@ -301,7 +301,7 @@ export function assessCompliance(profile: ComplianceProfile): ComplianceAssessme
     confidence: india ? 'LOW' : 'LOW',
     controls,
     caveats: [
-      'This is an establishment-level compliance assessment aid, not a legal opinion, certification or filing submission.',
+      'This is an establishment-level compliance assessment aid, not a legal opinion or certification or filing submission.',
       'A REVIEW status means evidence, worker classification or jurisdiction-specific rules are required; it is not a finding of non-compliance.',
       'A numeric compliance score is intentionally withheld until verified evidence can support deterministic PASS/FAIL outcomes.',
       'For multi-site employers, assess each establishment/site or an explicitly controlled cluster; do not infer site-level compliance from corporate headcount.',
