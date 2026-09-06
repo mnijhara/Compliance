@@ -29,3 +29,45 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
+      - name: Production runtime smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm start > /tmp/complyos-server.log 2>&1 &
+          SERVER_PID=$!
+          cleanup() {
+            kill "$SERVER_PID" 2>/dev/null || true
+            wait "$SERVER_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=0
+          for attempt in {1..30}; do
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              echo "Production server exited before becoming ready"
+              cat /tmp/complyos-server.log
+              exit 1
+            fi
+            if curl --fail --silent --show-error http://127.0.0.1:3000/api/health > /tmp/health.json; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$ready" -ne 1 ]; then
+            echo "Production server did not become ready within 30 seconds"
+            cat /tmp/complyos-server.log
+            exit 1
+          fi
+
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const health = JSON.parse(fs.readFileSync('/tmp/health.json', 'utf8'));
+          if (!health.ok) throw new Error('Health endpoint did not report ok=true');
+          if (!health.persistence) throw new Error('Health endpoint missing persistence contract');
+          if (!health.sourceRegistry) throw new Error('Health endpoint missing source registry contract');
+          NODE
+
+          curl --fail --silent --show-error http://127.0.0.1:3000/ > /tmp/home.html
+          grep -qi '<!doctype html' /tmp/home.html
