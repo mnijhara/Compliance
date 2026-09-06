@@ -40,21 +40,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white shadow-md shadow-indigo-500/20 ring-1 ring-slate-900/10">
-              <ShieldCheck className="w-6 h-6" />
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></span>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-bold tracking-tight text-slate-900">Comply<span className="text-indigo-600">OS</span></span>
-                <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-600 rounded-md border border-slate-200">
-                  AI-Native
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-500 -mt-0.5 font-sans">HR Compliance Operating System</p>
-            </div>
-          </div>
+          <button className="flex items-center gap-3 cursor-pointer text-left" onClick={() => setActiveTab('home')} aria-label="Go to ComplyOS home">
+            <img src="/branding/logo.svg" alt="ComplyOS — HR Compliance Operating System" className="h-11 w-auto" />
+          </button>
 
           <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
@@ -82,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           </div>
 
           <div className="flex lg:hidden">
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-slate-700 hover:text-slate-900 rounded-lg bg-slate-100 border border-slate-200">
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'} className="p-2 text-slate-700 hover:text-slate-900 rounded-lg bg-slate-100 border border-slate-200">
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
