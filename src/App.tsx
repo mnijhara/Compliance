@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState } from 'react';
-import { AlertTriangle, LoaderCircle, MessageCircle } from 'lucide-react';
+import { AlertTriangle, LoaderCircle } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { LandingPage } from './components/LandingPage';
@@ -15,7 +15,9 @@ const PolicyGenerator = lazy(() => import('./components/PolicyGenerator').then(m
 const ComplianceControlCenter = lazy(() => import('./components/ComplianceControlCenter').then(m => ({ default: m.ComplianceControlCenter })));
 const PricingPage = lazy(() => import('./components/PricingPage').then(m => ({ default: m.PricingPage })));
 
-class AppErrorBoundary extends React.Component<React.PropsWithChildren, { hasError: boolean }> {
+type BoundaryProps = { children?: React.ReactNode };
+
+class AppErrorBoundary extends React.Component<BoundaryProps, { hasError: boolean }> {
   state = { hasError: false };
   static getDerivedStateFromError() { return { hasError: true }; }
   componentDidCatch(error: unknown) { console.error('ComplyOS UI error:', error); }
