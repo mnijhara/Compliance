@@ -75,3 +75,16 @@ test('state applicability remains blocked until an authoritative source is mappe
   assert.equal(result.status, 'BLOCKED');
   assert.ok(result.reasons.includes('AUTHORITATIVE_SOURCE_REQUIRED'));
 });
+
+test('workflow source freshness respects the evaluation timestamp', () => {
+  const workflow = STATUTORY_WORKFLOWS[0];
+  assert.ok(workflow);
+  const step = workflow.steps.find(item => item.id === 'employer-profile');
+  assert.ok(step);
+  const evidence = [acceptedEvidence(step.id)];
+  const future = new Date('2027-01-01T00:00:00.000Z');
+  const result = evaluateWorkflowStep(step, evidence, COMPLIANCE_SOURCES, future);
+  assert.equal(result.status, 'BLOCKED');
+  assert.ok(result.reasons.includes('AUTHORITATIVE_SOURCE_FRESHNESS_REQUIRED'));
+  assert.deepEqual(result.verifiedSourceIds, []);
+});
