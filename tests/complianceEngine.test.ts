@@ -7,12 +7,25 @@ import { evidenceCanSupportPass, isEvidenceCurrent, EvidenceItem } from '../src/
 import { canonicalAuditPayload } from '../src/domain/auditTrail';
 import { createRateLimiter, isNonEmptyString, MAX_DOCUMENT_CHARS } from '../src/security/inputGuards';
 
-test('India assessment never turns missing evidence into PASS', () => {
+test('India assessment never turns missing evidence into PASS or a numeric score', () => {
   const result = assessCompliance({ jurisdiction: 'India - National', employeeCount: 25, establishmentType: 'office', hasContractWorkers: true, hasNightShift: true });
   assert.ok(result.controls.some(control => control.id === 'appointment-letters' && control.status === 'REVIEW'));
   assert.ok(result.controls.some(control => control.id === 'contract-labour' && control.status === 'REVIEW'));
   assert.ok(result.controls.some(control => control.id === 'night-shift-safety' && control.status === 'REVIEW'));
+  assert.equal(result.score, null);
   assert.match(result.caveats.join(' '), /legal opinion or certification/i);
+});
+
+test('QSR-style site profile creates outlet-specific workforce controls', () => {
+  const result = assessCompliance({
+    jurisdiction: 'India - Maharashtra', employeeCount: 32, establishmentType: 'shop', industry: 'Quick Service Restaurant',
+    hasContractWorkers: true, hasNightShift: true, hasWomenNightWork: true, hasFixedTermWorkers: true,
+    hasMigrantWorkers: true, hasApprentices: false, hasWorkersUnder18: true, operatingModel: 'multi-site'
+  });
+  assert.equal(result.score, null);
+  for (const id of ['qsr-operational-compliance', 'women-night-work', 'fixed-term-gratuity', 'migrant-worker-governance', 'young-worker-safeguards']) {
+    assert.ok(result.controls.some(control => control.id === id && control.status === 'REVIEW'), `missing ${id}`);
+  }
 });
 
 test('unsupported jurisdiction is not assessed as compliant', () => {
