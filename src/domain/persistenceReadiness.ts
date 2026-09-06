@@ -1,13 +1,11 @@
-export type PersistenceMode = 'unconfigured' | 'memory';
-
 export interface PersistenceReadiness {
   configured: boolean;
   durable: boolean;
-  mode: PersistenceMode;
+  mode: 'unconfigured' | 'memory' | 'durable';
 }
 
 /**
- * Reports only the adapters that are actually implemented. Memory is never
+ * Reports only adapters that are actually implemented. Memory is never
  * considered durable and is not a production system of record.
  */
 export function getPersistenceReadiness(env: NodeJS.ProcessEnv = process.env): PersistenceReadiness {
