@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
 import { assessCompliance, ComplianceProfile } from './src/complianceEngine';
 import { COMPLIANCE_SOURCES } from './src/data/complianceSources';
+import { evaluateRegulatorySources, checkRegulatorySourceReachability } from './src/domain/regulatoryMonitoring';
 import { getPersistenceReadiness } from './src/domain/persistenceReadiness';
 import { validateSourceRegistry } from './src/domain/sourceRegistry';
 import { createRateLimiter, isNonEmptyString, MAX_DOCUMENT_CHARS, MAX_MESSAGE_CHARS, MAX_POLICY_FIELD_CHARS } from './src/security/inputGuards';
@@ -16,6 +17,7 @@ const PORT = Number(process.env.PORT || 3000);
 app.disable('x-powered-by');
 app.use(express.json({ limit: '2mb' }));
 const apiRateLimit = createRateLimiter(120, 60_000);
+const regulatoryMonitoringRateLimit = createRateLimiter(6, 60_000);
 app.use('/api', (req, res, next) => {
   if (req.path === '/health') return next();
   if (!apiRateLimit(req.ip || 'unknown')) return res.status(429).json({ error: 'Too many requests. Please retry shortly.', code: 'RATE_LIMITED' });
@@ -59,6 +61,20 @@ app.get('/api/health', (_req, res) => {
   const aiProxy = aiProxyStatus();
   const status = sourceRegistryIntegrity.valid ? 'ok' : 'degraded';
   res.json({ status, platform: 'ComplyOS Evidence-First Engine', version: '0.5.0', geminiAvailable: aiProxy.configured && aiProxy.healthySlots > 0, aiProxy, complianceEngine: 'evidence-first', persistence, sourceRegistryIntegrity, productionReadyForSystemOfRecord: persistence.durable && sourceRegistryIntegrity.valid, timestamp: now() });
+});
+
+app.get('/api/regulatory-monitoring', async (req, res) => {
+  if (!regulatoryMonitoringRateLimit(req.ip || 'unknown')) return res.status(429).json({ error: 'Regulatory monitoring checks are temporarily rate limited.', code: 'REGULATORY_MONITORING_RATE_LIMITED' });
+  const asOf = now();
+  const maxAgeRaw = typeof req.query.maxAgeDays === 'string' ? Number(req.query.maxAgeDays) : 30;
+  const maxAgeDays = Number.isFinite(maxAgeRaw) && maxAgeRaw >= 0 && maxAgeRaw <= 3650 ? maxAgeRaw : 30;
+  const snapshot = evaluateRegulatorySources(COMPLIANCE_SOURCES, asOf, maxAgeDays);
+  try {
+    const checked = await checkRegulatorySourceReachability(snapshot, COMPLIANCE_SOURCES);
+    return res.json({ ...checked, disclaimer: 'Source health is an operational verification signal only. Stale or unreachable sources require review and never establish compliance or non-compliance.' });
+  } catch (error) {
+    return res.status(502).json({ error: error instanceof Error ? error.message : 'Regulatory monitoring failed', code: 'REGULATORY_MONITORING_FAILED' });
+  }
 });
 
 app.post('/api/compliance/assess', (req, res) => {
