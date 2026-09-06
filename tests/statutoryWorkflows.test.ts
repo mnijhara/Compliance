@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getStatutoryWorkflow, STATUTORY_WORKFLOWS, workflowCanAdvance } from '../src/domain/statutoryWorkflows';
+import { COMPLIANCE_SOURCES } from '../src/data/complianceSources';
+import { EvidenceItem } from '../src/domain/evidence';
+import { evaluateWorkflowStep, getStatutoryWorkflow, STATUTORY_WORKFLOWS, workflowCanAdvance } from '../src/domain/statutoryWorkflows';
+
+const acceptedEvidence = (controlId: string): EvidenceItem => ({
+  id: `evidence-${controlId}`,
+  tenantId: 'tenant-test',
+  controlId,
+  kind: 'DOCUMENT',
+  title: 'Verified evidence',
+  contentHash: 'sha256:test',
+  collectedAt: '2026-09-06T00:00:00.000Z',
+  verifiedAt: '2026-09-06T00:01:00.000Z',
+  status: 'ACCEPTED',
+  verifiedBy: 'reviewer-test'
+});
 
 test('Labour Code workflow is evidence-first and requires human verification', () => {
   const workflow = getStatutoryWorkflow('labour-code-readiness');
@@ -27,4 +42,36 @@ test('workflow advancement remains explicit rather than automatic completion', (
   assert.equal(profileStep.status, 'EVIDENCE_REQUIRED');
   assert.equal(workflowCanAdvance(profileStep), true);
   assert.notEqual(profileStep.status, 'COMPLETED');
+});
+
+test('workflow gate blocks without current evidence', () => {
+  const workflow = STATUTORY_WORKFLOWS[0];
+  assert.ok(workflow);
+  const step = workflow.steps.find(item => item.id === 'employer-profile');
+  assert.ok(step);
+  const result = evaluateWorkflowStep(step, [], COMPLIANCE_SOURCES);
+  assert.equal(result.status, 'BLOCKED');
+  assert.ok(result.reasons.includes('CURRENT_EVIDENCE_REQUIRED'));
+});
+
+test('workflow gate permits review only with current evidence and fresh authoritative sources', () => {
+  const workflow = STATUTORY_WORKFLOWS[0];
+  assert.ok(workflow);
+  const step = workflow.steps.find(item => item.id === 'employer-profile');
+  assert.ok(step);
+  const evidence = [acceptedEvidence(step.id)];
+  const result = evaluateWorkflowStep(step, evidence, COMPLIANCE_SOURCES);
+  assert.equal(result.status, 'READY_FOR_REVIEW');
+  assert.deepEqual(result.currentEvidenceIds, [evidence[0].id]);
+  assert.deepEqual(result.verifiedSourceIds, step.sourceIds);
+});
+
+test('state applicability remains blocked until an authoritative source is mapped', () => {
+  const workflow = STATUTORY_WORKFLOWS[0];
+  assert.ok(workflow);
+  const step = workflow.steps.find(item => item.id === 'state-applicability');
+  assert.ok(step);
+  const result = evaluateWorkflowStep(step, [acceptedEvidence(step.id)], COMPLIANCE_SOURCES);
+  assert.equal(result.status, 'BLOCKED');
+  assert.ok(result.reasons.includes('AUTHORITATIVE_SOURCE_REQUIRED'));
 });
