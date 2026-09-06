@@ -12,9 +12,9 @@ const context: AuthenticatedTenantContext = {
   authMethod: 'oidc'
 };
 
-const durablePersistence = { configured: true, durable: true, mode: 'unconfigured' as const };
+const durablePersistence = { configured: true, durable: true, mode: 'durable' as const };
 
- test('blocks system-of-record writes without durable persistence', () => {
+test('blocks system-of-record writes without durable persistence', () => {
   const result = authorizeSystemOfRecordWrite(context, 'tenant-a', { configured: false, durable: false, mode: 'unconfigured' });
   assert.equal(result.allowed, false);
   if (!result.allowed) assert.equal(result.code, 'PERSISTENCE_NOT_DURABLE');
