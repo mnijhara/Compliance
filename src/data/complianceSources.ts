@@ -10,8 +10,8 @@ export interface ComplianceSource {
 }
 
 /**
- * Source registry for the compliance engine. AI output must never be treated as
- * the primary legal source; these records provide the traceability layer.
+ * Primary-source registry. AI output is never a legal source; these records
+ * provide traceability and a verification anchor for evidence-first controls.
  */
 export const COMPLIANCE_SOURCES: ComplianceSource[] = [
   {
@@ -21,7 +21,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - National',
     url: 'https://www.labour.gov.in/static/uploads/2026/02/83978455025732b99b0165def80ab171.pdf',
     lastVerified: '2026-09-06',
-    notes: 'Employer reference handbook; the enacted Codes and applicable Rules prevail if there is a discrepancy.'
+    notes: 'Employer reference handbook; enacted Codes and applicable Rules prevail if there is a discrepancy.'
   },
   {
     id: 'mole-labour-codes-effective',
@@ -34,13 +34,53 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     notes: 'Official government release confirming implementation of the four Labour Codes from 21 November 2025.'
   },
   {
+    id: 'mole-code-wages-rules-2026',
+    title: 'Code on Wages (Central) Rules, 2026',
+    authority: 'Ministry of Labour & Employment, Government of India',
+    jurisdiction: 'India - National',
+    url: 'https://www.labour.gov.in/static/uploads/2026/05/6eb0c35ba63b776487a025e5123b6b12.pdf',
+    effectiveDate: '2026-05-08',
+    lastVerified: '2026-09-06',
+    notes: 'Official Gazette rules. State rules and establishment-specific applicability must also be checked.'
+  },
+  {
+    id: 'mole-social-security-rules-2026',
+    title: 'Code on Social Security (Central) Rules, 2026',
+    authority: 'Ministry of Labour & Employment, Government of India',
+    jurisdiction: 'India - National',
+    url: 'https://www.labour.gov.in/static/uploads/2026/05/49aa9b62c2125499c37399b90e969d67.pdf',
+    effectiveDate: '2026-05-08',
+    lastVerified: '2026-09-06',
+    notes: 'Official Gazette rules superseding the listed central rules; current notifications and state provisions remain relevant.'
+  },
+  {
+    id: 'mole-ir-rules-2026',
+    title: 'Industrial Relations (Central) Rules, 2026',
+    authority: 'Ministry of Labour & Employment, Government of India',
+    jurisdiction: 'India - National',
+    url: 'https://www.labour.gov.in/static/uploads/2026/05/f05a2c220dcdec0ea9c55e84d9ff791f.pdf',
+    effectiveDate: '2026-05-08',
+    lastVerified: '2026-09-06',
+    notes: 'Official Gazette rules under the Industrial Relations Code, 2020.'
+  },
+  {
+    id: 'mole-osh-rules-2026',
+    title: 'Occupational Safety, Health and Working Conditions (Central) Rules, 2026',
+    authority: 'Ministry of Labour & Employment, Government of India',
+    jurisdiction: 'India - National',
+    url: 'https://www.labour.gov.in/static/uploads/2026/05/ee246f790cad0b8e99c3828f34fa09a6.pdf',
+    effectiveDate: '2026-05-08',
+    lastVerified: '2026-09-06',
+    notes: 'Official Gazette rules. State-specific Shops/Establishments and other applicable rules must also be verified.'
+  },
+  {
     id: 'mole-annual-report-2024-25',
     title: 'Ministry of Labour & Employment Annual Report 2024-25',
     authority: 'Ministry of Labour & Employment, Government of India',
     jurisdiction: 'India - National',
     url: 'https://labour.gov.in/sites/default/files/arenglish2024-25_compressed.pdf',
     lastVerified: '2026-09-06',
-    notes: 'Background and implementation context for the four Labour Codes and state rule-making.'
+    notes: 'Background and implementation context; not a substitute for operative legislation or rules.'
   },
   {
     id: 'wcd-legislation',
@@ -58,7 +98,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - Delhi',
     url: 'https://labour.delhi.gov.in/',
     lastVerified: '2026-09-06',
-    notes: 'Official Delhi labour authority portal. Use the current Acts, Rules, Gazette notifications and department notices linked from this portal.'
+    notes: 'Official Delhi labour authority portal. Current Acts, Rules, Gazette notifications and department notices must be checked.'
   },
   {
     id: 'delhi-shops-establishments-act',
@@ -67,7 +107,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - Delhi',
     url: 'https://labour.delhi.gov.in/labour/delhi-shops-and-establishments-act1954',
     lastVerified: '2026-09-06',
-    notes: 'Official Delhi departmental publication. Current notifications and exemptions must be checked before applying any provision.'
+    notes: 'Official Delhi departmental publication. Current notifications and exemptions must be checked before applying a provision.'
   },
   {
     id: 'karnataka-labour-district-department',
@@ -76,7 +116,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - Karnataka',
     url: 'https://kodagu.nic.in/en/department-of-labour/',
     lastVerified: '2026-09-06',
-    notes: 'Official Karnataka government labour-department page. Use the current state Gazette and department notifications for operative rules and applicability.'
+    notes: 'Official Karnataka government labour-department page. Use current state Gazette and department notifications for operative rules.'
   },
   {
     id: 'karnataka-labour-welfare-board',
@@ -85,7 +125,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - Karnataka',
     url: 'https://klwb.karnataka.gov.in/storage/pdf-files/NewLabourDept_English_Final_2%2C2025-26.pdf',
     lastVerified: '2026-09-06',
-    notes: 'Official Karnataka Labour Welfare Board publication. Use the operative Act, Rules and Gazette notifications for statutory conclusions.'
+    notes: 'Official Karnataka Labour Welfare Board publication. Use operative Act, Rules and Gazette notifications for conclusions.'
   },
   {
     id: 'maharashtra-labour-commissioner',
@@ -94,7 +134,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - Maharashtra',
     url: 'https://mahakamgar.maharashtra.gov.in/',
     lastVerified: '2026-09-06',
-    notes: 'Official Maharashtra labour authority portal, including minimum wage, new Codes and rules, construction-worker and other labour resources.'
+    notes: 'Official Maharashtra labour authority portal. Current state rules, notifications and orders must be mapped to each control.'
   }
 ];
 

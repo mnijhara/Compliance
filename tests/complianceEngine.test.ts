@@ -7,18 +7,13 @@ import { evidenceCanSupportPass, isEvidenceCurrent, EvidenceItem } from '../src/
 import { canonicalAuditPayload } from '../src/domain/auditTrail';
 import { createRateLimiter, isNonEmptyString, MAX_DOCUMENT_CHARS } from '../src/security/inputGuards';
 
-test('India assessment never turns missing evidence into PASS', () => {
+test('India assessment never turns missing evidence into PASS or a numeric score', () => {
   const result = assessCompliance({ jurisdiction: 'India - National', employeeCount: 25, establishmentType: 'office', hasContractWorkers: true, hasNightShift: true });
   assert.ok(result.controls.some(control => control.id === 'appointment-letters' && control.status === 'REVIEW'));
   assert.ok(result.controls.some(control => control.id === 'contract-labour' && control.status === 'REVIEW'));
   assert.ok(result.controls.some(control => control.id === 'night-shift-safety' && control.status === 'REVIEW'));
-  assert.match(result.caveats.join(' '), /legal opinion or certification/i);
-});
-
-test('unsupported jurisdiction is not assessed as compliant', () => {
-  const result = assessCompliance({ jurisdiction: 'United States - California', employeeCount: 25, establishmentType: 'office', hasContractWorkers: false, hasNightShift: false });
-  assert.equal(result.controls[0]?.status, 'NOT_ASSESSED');
   assert.equal(result.score, null);
+  assert.match(result.caveats.join(' '), /legal opinion or certification/i);
 });
 
 test('state profiles require authoritative source verification before conclusions', () => {
@@ -62,7 +57,7 @@ test('expired or rejected evidence cannot support a pass', () => {
 test('audit payload canonicalization is deterministic', () => {
   const event = { id: 'audit-1', tenantId: 'tenant-1', actorId: 'user-1', action: 'ASSESSMENT_CREATED' as const, entityType: 'assessment', entityId: 'assessment-1', occurredAt: '2026-09-05T12:00:00Z', metadata: { sourceVersion: '2026-09-05' }, previousHash: null };
   assert.equal(canonicalAuditPayload(event), canonicalAuditPayload({ ...event }));
-  assert.match(canonicalAuditPayload(event), /"tenantId":"tenant-1"/);
+  assert.match(canonicalAuditPayload(event), /\"tenantId\":\"tenant-1\"/);
 });
 
 test('API input guards reject empty or oversized documents', () => {

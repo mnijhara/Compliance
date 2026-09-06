@@ -1,235 +1,82 @@
 import React, { useState } from 'react';
-import { FileText, Sparkles, RefreshCw, Copy, Check, ShieldCheck, Building, Users } from 'lucide-react';
+import { FileText, Sparkles, RefreshCw, Copy, Check, Building, Users, AlertTriangle } from 'lucide-react';
 
 export const PolicyGenerator: React.FC = () => {
-  const [companyName, setCompanyName] = useState<string>('Mahindra Holidays & Resorts India Ltd');
-  const [policyType, setPolicyType] = useState<string>('POSH & Harassment Redressal Policy (POSH Act 2013)');
-  const [jurisdiction, setJurisdiction] = useState<string>('India - National (Central Acts & 4 Labour Codes)');
-  const [employeeCount, setEmployeeCount] = useState<number>(250);
-  const [specialProvisions, setSpecialProvisions] = useState<string>('Include remote work guidelines, quarterly IC committee meeting SLAs, and annual return filing schedule for District Officer.');
-
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [generatedPolicy, setGeneratedPolicy] = useState<{ title: string; content: string; generatedAt: string } | null>(null);
-  const [copied, setCopied] = useState<boolean>(false);
+  const [companyName, setCompanyName] = useState('');
+  const [policyType, setPolicyType] = useState('POSH & Workplace Conduct Policy');
+  const [jurisdiction, setJurisdiction] = useState('India - National');
+  const [employeeCount, setEmployeeCount] = useState('');
+  const [specialProvisions, setSpecialProvisions] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedPolicy, setGeneratedPolicy] = useState<{ title: string; content: string; generatedAt: string; verificationRequired?: boolean } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleGenerate = async () => {
+    if (!companyName.trim()) return setError('Enter the actual company / legal-entity name.');
+    if (!employeeCount || !Number.isFinite(Number(employeeCount)) || Number(employeeCount) < 0) return setError('Enter the actual current headcount.');
+    if (!specialProvisions.trim()) return setError('Describe the actual business/process requirements the draft must address.');
+
     setIsGenerating(true);
+    setError(null);
+    setGeneratedPolicy(null);
     try {
       const response = await fetch('/api/policy-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          companyName,
-          policyType,
-          jurisdiction,
-          employeeCount,
-          specialProvisions
-        })
+        body: JSON.stringify({ companyName: companyName.trim(), policyType, jurisdiction, employeeCount: Number(employeeCount), specialProvisions: specialProvisions.trim() })
       });
-
-      const data = await response.json();
-      setGeneratedPolicy({
-        title: data.policyTitle,
-        content: data.content,
-        generatedAt: data.generatedAt
-      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || `Policy service returned ${response.status}.`);
+      if (!data?.content) throw new Error('The policy service returned no draft.');
+      setGeneratedPolicy({ title: data.policyTitle, content: data.content, generatedAt: data.generatedAt, verificationRequired: data.verificationRequired });
     } catch (err) {
-      console.error('Policy generation error:', err);
+      setError(err instanceof Error ? err.message : 'Policy generation failed.');
     } finally {
       setIsGenerating(false);
     }
   };
 
   const copyToClipboard = () => {
-    if (generatedPolicy) {
-      navigator.clipboard.writeText(generatedPolicy.content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    }
+    if (!generatedPolicy) return;
+    navigator.clipboard.writeText(generatedPolicy.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   };
 
   return (
     <div className="bg-white text-slate-900 min-h-screen py-10 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* Title */}
         <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold shadow-xs">
-            <FileText className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Indian Statutory HR Policy Architect</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Indian Statutory Policy & Employee Handbook Generator
-          </h1>
-          <p className="text-slate-600 text-sm max-w-3xl leading-relaxed">
-            Generate legally binding, statutorily compliant HR policies aligned with Indian Labour Codes, POSH Act 2013, EPF/ESIC guidelines, Gratuity Act, and state Shops & Establishments rules.
-          </p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold"><FileText className="w-3.5 h-3.5" /> AI policy drafting workspace</div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">HR Policy Drafting Studio</h1>
+          <p className="text-slate-600 text-sm max-w-3xl leading-relaxed">Generate a working draft from your actual company inputs. ComplyOS does not call an AI draft legally binding or certified compliant; every material proposition must be checked against current primary sources before approval.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Form Controls (5 cols) */}
-          <div className="lg:col-span-5 space-y-5">
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
-              
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono">
-                Policy Parameters & Corporate Setup
-              </h3>
-
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="font-semibold text-slate-600 block mb-1">Company / Enterprise Name</label>
-                  <div className="relative">
-                    <Building className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                    <input
-                      type="text"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      className="w-full bg-white text-slate-900 pl-10 pr-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-indigo-500 shadow-xs"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-slate-600 block mb-1">Policy Type</label>
-                  <select
-                    value={policyType}
-                    onChange={(e) => setPolicyType(e.target.value)}
-                    className="w-full bg-white text-slate-900 p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-indigo-500 shadow-xs"
-                  >
-                    <option value="POSH & Harassment Redressal Policy (POSH Act 2013)">POSH & Harassment Redressal Policy (POSH Act 2013)</option>
-                    <option value="EPF, ESI & Statutory Benefits Policy">EPF, ESI & Statutory Benefits Policy (Code on Social Security)</option>
-                    <option value="Overtime & Working Hours Policy">Overtime & Working Hours Policy (Shops & Est. / Code on Wages)</option>
-                    <option value="Payment of Gratuity & Severance Policy">Payment of Gratuity & Severance Policy (Gratuity Act 1972)</option>
-                    <option value="Maternity, Crèche & Nursing Break Policy">Maternity, Crèche & Nursing Break Policy (Maternity Benefit Act 2017)</option>
-                    <option value="Contract Labour Safety & Licensing Policy">Contract Labour Safety & Licensing Policy (CLRA Act 1970)</option>
-                    <option value="Equal Opportunity & Disability Policy">Equal Opportunity & Disability Policy (RPwD Act 2016)</option>
-                    <option value="Remote & Hybrid Work Policy">Remote & Hybrid Work Policy</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-slate-600 block mb-1">Primary Jurisdiction</label>
-                  <select
-                    value={jurisdiction}
-                    onChange={(e) => setJurisdiction(e.target.value)}
-                    className="w-full bg-white text-indigo-700 font-semibold p-2.5 rounded-xl border border-indigo-300 focus:outline-none focus:border-indigo-500 shadow-xs"
-                  >
-                    <option value="India - National (Central Acts & 4 Labour Codes)">🇮🇳 India - National (Central Acts & 4 Labour Codes)</option>
-                    <option value="India - Maharashtra (Shops & Est. Act 2017)">🇮🇳 India - Maharashtra (Shops & Est Act 2017)</option>
-                    <option value="India - Karnataka (IT & Shops Act 1961)">🇮🇳 India - Karnataka (IT & Shops Act 1961)</option>
-                    <option value="India - Delhi (Shops & Est. Act 1954)">🇮🇳 India - Delhi (Shops & Est. Act 1954)</option>
-                    <option value="India - Telangana (Shops Act & Form XXIV)">🇮🇳 India - Telangana (Shops Act & Form XXIV)</option>
-                    <option value="India - Tamil Nadu (Shops Act & Right to Sit)">🇮🇳 India - Tamil Nadu (Shops Act & Right to Sit)</option>
-                    <option value="India - Gujarat (Shops Act 2019)">🇮🇳 India - Gujarat (Shops Act 2019)</option>
-                    <option value="US - California (AB5 / Overtime)">🇺🇸 US - California (AB5 / Overtime)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-slate-600 block mb-1">Total Employee Headcount</label>
-                  <div className="relative">
-                    <Users className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                    <input
-                      type="number"
-                      value={employeeCount}
-                      onChange={(e) => setEmployeeCount(Number(e.target.value))}
-                      className="w-full bg-white text-slate-900 pl-10 pr-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-indigo-500 shadow-xs"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-slate-600 block mb-1">Special Statutory Provisions</label>
-                  <textarea
-                    rows={4}
-                    value={specialProvisions}
-                    onChange={(e) => setSpecialProvisions(e.target.value)}
-                    placeholder="Enter custom clauses or internal escalation rules..."
-                    className="w-full bg-white text-slate-900 p-3 rounded-xl border border-slate-300 focus:outline-none focus:border-indigo-500 font-mono shadow-xs"
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className="w-full py-3 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {isGenerating ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Drafting Indian Statutory Policy...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    <span>Generate Compliant Policy</span>
-                  </>
-                )}
-              </button>
-
+          <div className="lg:col-span-5">
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
+              <h2 className="text-xs font-bold uppercase tracking-wider">Draft parameters</h2>
+              <label className="block text-xs"><span className="font-semibold text-slate-600">Company / legal entity</span><div className="relative mt-1"><Building className="w-4 h-4 text-slate-400 absolute left-3 top-3" /><input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Actual legal-entity name" className="w-full bg-white pl-10 pr-3 py-2.5 rounded-xl border border-slate-300" /></div></label>
+              <label className="block text-xs"><span className="font-semibold text-slate-600">Policy type</span><select value={policyType} onChange={e => setPolicyType(e.target.value)} className="w-full mt-1 bg-white p-2.5 rounded-xl border border-slate-300"><option>POSH & Workplace Conduct Policy</option><option>Working Hours, Rostering & Overtime Policy</option><option>Maternity, Nursing & Crèche Policy</option><option>Contract Worker Governance Policy</option><option>Employee Benefits & Social Security Policy</option><option>Equal Opportunity & Accessibility Policy</option><option>Grievance & Employee Relations Policy</option><option>Remote / Hybrid Work Policy</option></select></label>
+              <label className="block text-xs"><span className="font-semibold text-slate-600">Primary jurisdiction</span><select value={jurisdiction} onChange={e => setJurisdiction(e.target.value)} className="w-full mt-1 bg-white p-2.5 rounded-xl border border-slate-300"><option>India - National</option><option>India - Maharashtra</option><option>India - Karnataka</option><option>India - Delhi</option></select></label>
+              <label className="block text-xs"><span className="font-semibold text-slate-600">Current headcount</span><div className="relative mt-1"><Users className="w-4 h-4 text-slate-400 absolute left-3 top-3" /><input type="number" min={0} value={employeeCount} onChange={e => setEmployeeCount(e.target.value)} placeholder="Actual current headcount" className="w-full bg-white pl-10 pr-3 py-2.5 rounded-xl border border-slate-300" /></div></label>
+              <label className="block text-xs"><span className="font-semibold text-slate-600">Business-specific requirements</span><textarea rows={5} value={specialProvisions} onChange={e => setSpecialProvisions(e.target.value)} placeholder="Describe the actual process, roles, locations, shifts, approvals or exceptions the policy must cover." className="w-full mt-1 bg-white p-3 rounded-xl border border-slate-300 font-mono" /></label>
+              <button type="button" onClick={handleGenerate} disabled={isGenerating} className="w-full py-3 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-md flex items-center justify-center gap-2 disabled:opacity-60">{isGenerating ? <><RefreshCw className="w-4 h-4 animate-spin" /> Drafting…</> : <><Sparkles className="w-4 h-4" /> Generate working draft</>}</button>
+              {error && <div className="p-3 rounded-xl border border-rose-200 bg-rose-50 text-xs text-rose-800 flex gap-2"><AlertTriangle className="w-4 h-4 shrink-0" />{error}</div>}
             </div>
           </div>
 
-          {/* Generated Markdown Document Output (7 cols) */}
-          <div className="lg:col-span-7 space-y-5">
-            {generatedPolicy ? (
-              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
-                
-                <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                  <div>
-                    <span className="text-[10px] font-mono font-bold text-emerald-700 uppercase">STATUTORY POLICY READY</span>
-                    <h3 className="text-lg font-bold text-slate-900">{generatedPolicy.title}</h3>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={copyToClipboard}
-                      className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-lg border border-slate-300 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-emerald-600">Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Copy Markdown</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Markdown Text Area */}
-                <textarea
-                  readOnly
-                  rows={18}
-                  value={generatedPolicy.content}
-                  className="w-full bg-white text-slate-900 text-xs p-4 rounded-xl border border-slate-300 font-mono leading-relaxed custom-scrollbar shadow-xs"
-                />
-
-                <div className="flex items-center justify-between text-xs text-slate-600 pt-2">
-                  <span className="flex items-center gap-1"><ShieldCheck className="w-4 h-4 text-emerald-600" /> Indian Statutory Citations Verified</span>
-                  <span>Generated: {new Date(generatedPolicy.generatedAt).toLocaleDateString()}</span>
-                </div>
-
-              </div>
-            ) : (
-              <div className="bg-slate-50 p-12 rounded-2xl border border-slate-200 text-center space-y-3 h-full flex flex-col justify-center items-center shadow-xs">
-                <FileText className="w-10 h-10 text-slate-400" />
-                <h3 className="text-base font-bold text-slate-900">No Policy Generated Yet</h3>
-                <p className="text-xs text-slate-600 max-w-sm">
-                  Configure your company parameters on the left and click "Generate Compliant Policy" to draft a custom statutory document.
-                </p>
-              </div>
-            )}
+          <div className="lg:col-span-7">
+            {!generatedPolicy && <div className="h-full min-h-[420px] bg-slate-50 p-10 rounded-2xl border border-slate-200 flex flex-col justify-center items-center text-center"><FileText className="w-10 h-10 text-slate-400" /><h2 className="mt-3 text-base font-bold">No policy draft yet</h2><p className="mt-2 max-w-md text-xs text-slate-600">Use actual company information. No sample employer, headcount or “compliant” policy is preloaded.</p></div>}
+            {generatedPolicy && <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4"><div><span className="text-[10px] font-mono font-bold text-indigo-700 uppercase">WORKING DRAFT — REVIEW REQUIRED</span><h3 className="text-lg font-bold">{generatedPolicy.title}</h3></div><button type="button" onClick={copyToClipboard} className="px-3 py-1.5 text-xs font-semibold bg-white rounded-lg border border-slate-300 flex items-center gap-1.5">{copied ? <><Check className="w-3.5 h-3.5 text-emerald-600" />Copied</> : <><Copy className="w-3.5 h-3.5" />Copy draft</>}</button></div>
+              <textarea readOnly rows={22} value={generatedPolicy.content} className="w-full bg-white text-slate-900 text-xs p-4 rounded-xl border border-slate-300 font-mono leading-relaxed" />
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-950 flex gap-2"><AlertTriangle className="w-4 h-4 shrink-0" /><span><strong>Human verification required.</strong> {generatedPolicy.verificationRequired === false ? 'Review the source basis before use.' : 'Verify every legal proposition, local applicability, approval owner and effective date against current primary sources before issuing this policy.'}</span></div>
+              <div className="text-[11px] text-slate-500">Generated: {new Date(generatedPolicy.generatedAt).toLocaleString()}</div>
+            </div>}
           </div>
-
         </div>
-
       </div>
     </div>
   );

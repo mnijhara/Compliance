@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 180" role="img" aria-labelledby="title desc">
+  <title id="title">ComplyOS</title><desc id="desc">ComplyOS HR Compliance Operating System</desc>
+  <defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#4f46e5"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs>
+  <rect x="12" y="12" width="156" height="156" rx="38" fill="url(#g)"/>
+  <path d="M90 39 55 57v35c0 31 18 47 35 56 17-9 35-25 35-56V57L90 39Z" fill="none" stroke="#fff" stroke-width="9" stroke-linejoin="round"/>
+  <path d="m72 93 13 13 25-28" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="195" y="105" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="72" font-weight="750" letter-spacing="-3" fill="#0f172a">Comply<tspan fill="#4f46e5">OS</tspan></text>
+  <text x="198" y="139" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="19" font-weight="500" fill="#475569" letter-spacing=".4">HR Compliance Operating System</text>
+</svg>
