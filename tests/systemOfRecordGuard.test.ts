@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import { authorizeSystemOfRecordWrite } from '../src/domain/systemOfRecordGuard';
 import type { AuthenticatedTenantContext } from '../src/security/tenantContext';
 
+// Keep the fixture independent of wall-clock time so the suite remains stable
+// after the original fixture date has passed.
 const context: AuthenticatedTenantContext = {
   subjectId: 'user-1',
   tenantId: 'tenant-a',
   roles: ['compliance_admin'],
-  issuedAt: '2026-09-06T08:00:00.000Z',
-  expiresAt: '2026-09-06T09:00:00.000Z',
+  issuedAt: '2099-01-01T08:00:00.000Z',
+  expiresAt: '2099-01-01T09:00:00.000Z',
   authMethod: 'oidc'
 };
 
@@ -27,13 +29,13 @@ test('blocks system-of-record writes without authentication', () => {
 });
 
 test('blocks cross-tenant system-of-record writes', () => {
-  const result = authorizeSystemOfRecordWrite(context, 'tenant-b', durablePersistence);
+  const result = authorizeSystemOfRecordWrite(context, 'tenant-b', durablePersistence, new Date('2099-01-01T08:30:00.000Z'));
   assert.equal(result.allowed, false);
   if (!result.allowed) assert.equal(result.code, 'TENANT_MISMATCH');
 });
 
 test('allows a write only when auth and durable persistence both pass', () => {
-  const result = authorizeSystemOfRecordWrite(context, 'tenant-a', durablePersistence, new Date('2026-09-06T08:30:00.000Z'));
+  const result = authorizeSystemOfRecordWrite(context, 'tenant-a', durablePersistence, new Date('2099-01-01T08:30:00.000Z'));
   assert.equal(result.allowed, true);
   if (result.allowed) assert.equal(result.context.tenantId, 'tenant-a');
 });
