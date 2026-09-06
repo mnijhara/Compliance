@@ -1,7 +1,8 @@
-export type PersistenceReadiness =
-  | { configured: false; durable: false; mode: 'unconfigured' }
-  | { configured: true; durable: false; mode: 'memory' }
-  | { configured: true; durable: true; mode: 'durable' };
+export interface PersistenceReadiness {
+  configured: boolean;
+  durable: boolean;
+  mode: 'unconfigured' | 'memory' | 'durable';
+}
 
 /**
  * Reports only adapters that are actually implemented. Memory is never
