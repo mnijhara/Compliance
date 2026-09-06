@@ -3,6 +3,15 @@ import { ShieldCheck, Cpu, Scale, FileText, LayoutDashboard, DollarSign, Sparkle
 
 interface NavbarProps { activeTab: string; setActiveTab: (tab: string) => void; onOpenAuditModal?: () => void; }
 
+const BrandMark = () => (
+  <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-sky-500 text-white shadow-sm ring-1 ring-indigo-200/50">
+    <svg viewBox="0 0 64 64" className="h-8 w-8" fill="none">
+      <path d="M32 10 17 18.5v14.5c0 13.5 7.5 20.5 15 24.5 7.5-4 15-11 15-24.5V18.5L32 10Z" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
+      <path d="m24.5 32.5 5 5 10.5-11" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  </span>
+);
+
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navItems = [
@@ -27,8 +36,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between min-h-16 py-2">
           <button className="flex items-center gap-3 cursor-pointer text-left" onClick={() => setActiveTab('home')} aria-label="Go to ComplyOS home">
-            <img src="/branding/favicon.svg?v=2" alt="" aria-hidden="true" className="h-10 w-10 shrink-0 rounded-xl shadow-sm" />
-            <span className="hidden sm:block"><span className="block text-base font-black leading-5 tracking-tight text-slate-950">ComplyOS</span><span className="block text-[10px] font-semibold leading-4 text-slate-500">HR Compliance Operating System</span></span>
+            <BrandMark />
+            <span><span className="block text-base font-black leading-5 tracking-tight text-slate-950">ComplyOS</span><span className="hidden sm:block text-[10px] font-semibold leading-4 text-slate-500">HR Compliance Operating System</span></span>
           </button>
           <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => { const Icon = item.icon; const isActive = activeTab === item.id; return <button key={item.id} onClick={() => setActiveTab(item.id)} className={`relative px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${isActive ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}><Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} /><span>{item.label}</span>{item.badge && <span className="px-1.5 py-0.2 text-[9px] font-bold bg-indigo-100 text-indigo-700 rounded border border-indigo-200 uppercase tracking-tighter">{item.badge}</span>}</button>; })}

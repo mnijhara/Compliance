@@ -22,7 +22,7 @@ async function inspectViewport(name, width, height) {
     if (!title.includes('ComplyOS')) failures.push(`${name}: unexpected title: ${title}`);
 
     const heading = await page.locator('h1').first().innerText();
-    if (!heading.includes('Know what needs attention.')) failures.push(`${name}: hero heading missing`);
+    if (!heading.includes('Turn compliance into an operating system.')) failures.push(`${name}: command-center hero heading missing`);
 
     const reviewButton = page.getByRole('button', { name: /Review my documents/i }).first();
     await reviewButton.click();
