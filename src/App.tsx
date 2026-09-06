@@ -18,11 +18,16 @@ const PricingPage = lazy(() => import('./components/PricingPage').then(m => ({ d
 type BoundaryProps = { children?: React.ReactNode };
 
 class AppErrorBoundary extends React.Component<BoundaryProps, { hasError: boolean }> {
+  private readonly boundaryProps: BoundaryProps;
   state = { hasError: false };
+  constructor(props: BoundaryProps) {
+    super(props);
+    this.boundaryProps = props;
+  }
   static getDerivedStateFromError() { return { hasError: true }; }
   componentDidCatch(error: unknown) { console.error('ComplyOS UI error:', error); }
   render() {
-    if (!this.state.hasError) return this.props.children;
+    if (!this.state.hasError) return this.boundaryProps.children;
     return <div className="min-h-[70vh] flex items-center justify-center bg-white px-6"><div className="max-w-md rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center"><AlertTriangle className="mx-auto h-8 w-8 text-rose-600" /><h1 className="mt-3 text-lg font-black text-slate-900">ComplyOS could not render this screen</h1><p className="mt-2 text-sm text-slate-600">Your documents are not lost. Refresh the page or return to the home screen.</p><button onClick={() => window.location.reload()} className="mt-5 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white">Refresh ComplyOS</button></div></div>;
   }
 }
