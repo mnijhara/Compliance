@@ -20,7 +20,7 @@ export const COMPLIANCE_CONTROL_CATALOG: ComplianceControlDefinition[] = [
     title: 'Establishment applicability profile',
     applicability: ['India establishment', 'Current employee/worker profile', 'Establishment type'],
     requiredEvidence: ['Legal entity details', 'Establishment registration', 'Headcount/worker profile', 'State/location list'],
-    sourceIds: ['mole-labour-codes-effective', 'mole-labour-handbook-2026'],
+    sourceIds: ['mole-labour-codes-effective', 'mole-code-wages-rules-2026', 'mole-social-security-rules-2026', 'mole-ir-rules-2026', 'mole-osh-rules-2026'],
     risk: 'HIGH',
     ownerRole: 'HR / Compliance'
   },
@@ -30,7 +30,7 @@ export const COMPLIANCE_CONTROL_CATALOG: ComplianceControlDefinition[] = [
     title: 'Appointment letter evidence',
     applicability: ['Employees/workers engaged by the establishment'],
     requiredEvidence: ['Current template', 'Representative issued letters', 'Issuance workflow'],
-    sourceIds: ['mole-labour-codes-effective', 'mole-labour-handbook-2026'],
+    sourceIds: ['mole-osh-rules-2026', 'mole-labour-handbook-2026'],
     risk: 'HIGH',
     ownerRole: 'HR'
   },
@@ -40,7 +40,7 @@ export const COMPLIANCE_CONTROL_CATALOG: ComplianceControlDefinition[] = [
     title: 'Wage structure and payroll evidence',
     applicability: ['Employees/workers covered by applicable wage provisions', 'Applicable state/sector rules'],
     requiredEvidence: ['Payroll register', 'Salary structure', 'Wage calculation sample', 'Applicable notifications/rules'],
-    sourceIds: ['mole-labour-handbook-2026'],
+    sourceIds: ['mole-code-wages-rules-2026', 'mole-labour-handbook-2026'],
     risk: 'CRITICAL',
     ownerRole: 'Payroll / HR'
   },
@@ -60,7 +60,7 @@ export const COMPLIANCE_CONTROL_CATALOG: ComplianceControlDefinition[] = [
     title: 'Contractor compliance evidence',
     applicability: ['Contract workers engaged', 'Principal-employer/contractor facts verified'],
     requiredEvidence: ['Contractor register', 'Licences/registrations', 'Worker roster', 'Wage/payment evidence'],
-    sourceIds: ['mole-labour-handbook-2026'],
+    sourceIds: ['mole-osh-rules-2026', 'mole-social-security-rules-2026'],
     risk: 'HIGH',
     ownerRole: 'HR / Procurement'
   },
@@ -70,7 +70,7 @@ export const COMPLIANCE_CONTROL_CATALOG: ComplianceControlDefinition[] = [
     title: 'Night work safeguards',
     applicability: ['Night-shift work', 'Applicable state/establishment rules'],
     requiredEvidence: ['Roster', 'Consent/acknowledgement where applicable', 'Transport/security SOP', 'Applicable notification/rule'],
-    sourceIds: ['mole-labour-handbook-2026'],
+    sourceIds: ['mole-osh-rules-2026'],
     risk: 'HIGH',
     ownerRole: 'HR / Operations'
   }
