@@ -13,7 +13,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,6 +23,8 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
       - name: Typecheck
         run: npm run lint
       - name: Unit tests
@@ -71,3 +73,6 @@ jobs:
 
           curl --fail --silent --show-error http://127.0.0.1:3000/ > /tmp/home.html
           grep -qi '<!doctype html' /tmp/home.html
+
+          echo "Running Playwright Chromium UI verification against the built production server"
+          npm run test:browser
