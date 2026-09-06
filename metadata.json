@@ -1,6 +1,6 @@
 {
-  "name": "CmpliHR.ai - Indian Labor Laws & AI HR Compliance Platform",
-  "description": "Autonomous AI HR Compliance Intelligence Platform for India and global enterprises. Complete coverage of Indian Labour Laws, 4 New Labour Codes, POSH, EPF/ESI, Gratuity, and State Shops & Establishments Acts.",
+  "name": "ComplyOS — HR Compliance Operating System",
+  "description": "Evidence-first, AI-native HR compliance operations for controls, documents, audits and regulatory change in India.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

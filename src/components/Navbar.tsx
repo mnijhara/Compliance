@@ -27,7 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between min-h-16 py-2">
           <button className="flex items-center gap-3 cursor-pointer text-left" onClick={() => setActiveTab('home')} aria-label="Go to ComplyOS home">
-            <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-sm"><ShieldCheck className="h-5 w-5" /></span>
+            <img src="/branding/favicon.svg?v=2" alt="" aria-hidden="true" className="h-10 w-10 shrink-0 rounded-xl shadow-sm" />
             <span className="hidden sm:block"><span className="block text-base font-black leading-5 tracking-tight text-slate-950">ComplyOS</span><span className="block text-[10px] font-semibold leading-4 text-slate-500">HR Compliance Operating System</span></span>
           </button>
           <nav className="hidden lg:flex items-center gap-1">
