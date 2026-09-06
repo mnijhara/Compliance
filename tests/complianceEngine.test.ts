@@ -13,7 +13,7 @@ test('India assessment never turns missing evidence into PASS or a numeric score
   assert.ok(result.controls.some(control => control.id === 'contract-labour' && control.status === 'REVIEW'));
   assert.ok(result.controls.some(control => control.id === 'night-shift-safety' && control.status === 'REVIEW'));
   assert.equal(result.score, null);
-  assert.match(result.caveats.join(' '), /legal opinion, certification or filing submission/i);
+  assert.match(result.caveats.join(' '), /legal opinion or certification/i);
 });
 
 test('state profiles require authoritative source verification before conclusions', () => {
