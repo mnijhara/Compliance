@@ -27,6 +27,7 @@ export interface RegulatoryMonitoringSnapshot {
 
 const MS_PER_DAY = 86_400_000;
 const DEFAULT_REACHABILITY_TIMEOUT_MS = 4_000;
+const MAX_REACHABILITY_CONCURRENCY = 4;
 
 export function evaluateRegulatorySources(
   sources: ComplianceSource[],
@@ -114,8 +115,10 @@ async function probeSource(source: ComplianceSource, fetcher: RegulatoryFetch, t
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetcher(source.url, { method: 'HEAD', redirect: 'follow', signal: controller.signal });
-    if (response.ok || (response.status >= 300 && response.status < 400)) {
+    // Do not follow redirects. A trusted registry URL must never be allowed to
+    // redirect a server-side probe onto an arbitrary host or protocol.
+    const response = await fetcher(source.url, { method: 'HEAD', redirect: 'manual', signal: controller.signal });
+    if (response.ok || (response.status >= 300 && response.status < 400) || response.status === 405) {
       return { reachability: 'REACHABLE', httpStatus: response.status };
     }
     return { reachability: 'UNREACHABLE', httpStatus: response.status, reachabilityError: `Official source returned HTTP ${response.status}.` };
@@ -138,11 +141,23 @@ export async function checkRegulatorySourceReachability(
   timeoutMs = DEFAULT_REACHABILITY_TIMEOUT_MS
 ): Promise<RegulatoryMonitoringSnapshot> {
   const sourceById = new Map(sources.map(source => [source.id, source]));
-  const checks = await Promise.all(snapshot.sources.map(async result => {
-    const source = sourceById.get(result.sourceId);
-    if (!source) return { ...result, reachability: 'UNREACHABLE' as const, reachabilityError: 'Source is missing from the registry.' };
-    return { ...result, ...(await probeSource(source, fetcher, timeoutMs)) };
-  }));
+  const results = [...snapshot.sources];
+  let cursor = 0;
+  const worker = async () => {
+    while (true) {
+      const index = cursor++;
+      if (index >= results.length) return;
+      const result = results[index];
+      const source = sourceById.get(result.sourceId);
+      if (!source) {
+        results[index] = { ...result, reachability: 'UNREACHABLE', reachabilityError: 'Source is missing from the registry.' };
+        continue;
+      }
+      results[index] = { ...result, ...(await probeSource(source, fetcher, timeoutMs)) };
+    }
+  };
 
-  return buildSnapshot(checks, snapshot.asOf, snapshot.maxAgeDays);
+  const workerCount = Math.min(MAX_REACHABILITY_CONCURRENCY, results.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return buildSnapshot(results, snapshot.asOf, snapshot.maxAgeDays);
 }
