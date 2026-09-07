@@ -10,10 +10,18 @@ test('persistence readiness fails closed when no adapter is configured', () => {
   });
 });
 
-test('memory persistence is explicitly non-durable', () => {
-  assert.deepEqual(getPersistenceReadiness({ COMPLYOS_PERSISTENCE: 'memory' }), {
+test('memory persistence is explicitly non-durable outside production', () => {
+  assert.deepEqual(getPersistenceReadiness({ NODE_ENV: 'development', COMPLYOS_PERSISTENCE: 'memory' }), {
     configured: true,
     durable: false,
     mode: 'memory'
+  });
+});
+
+test('production never reports memory persistence as configured', () => {
+  assert.deepEqual(getPersistenceReadiness({ NODE_ENV: 'production', COMPLYOS_PERSISTENCE: 'memory' }), {
+    configured: false,
+    durable: false,
+    mode: 'unconfigured'
   });
 });
