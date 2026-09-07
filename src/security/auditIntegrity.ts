@@ -46,3 +46,19 @@ export async function verifyAuditEntry(entry: IntegrityProtectedAuditEntry): Pro
   const { integrityHash, ...payload } = entry;
   return integrityHash === await sha256(canonicalPayload(payload));
 }
+
+/**
+ * Verifies both each event's own hash and the ordering links between events.
+ * An empty chain is valid; a non-empty chain must begin with a null previousHash.
+ */
+export async function verifyAuditChain(entries: readonly IntegrityProtectedAuditEntry[]): Promise<boolean> {
+  if (entries.length === 0) return true;
+  if (entries[0].previousHash !== null) return false;
+
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (!(await verifyAuditEntry(entry))) return false;
+    if (index > 0 && entry.previousHash !== entries[index - 1].integrityHash) return false;
+  }
+  return true;
+}
