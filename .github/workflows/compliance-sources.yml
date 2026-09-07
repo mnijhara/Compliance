@@ -1,0 +1,29 @@
+name: Compliance Source Registry
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '31 3 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-sources:
+    name: Validate source registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate authoritative source metadata
+        run: npm run test:compliance-sources
