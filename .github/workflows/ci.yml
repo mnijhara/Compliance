@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm start > /tmp/complyos-server.log 2>&1 &
+          NODE_ENV=production npm start > /tmp/complyos-server.log 2>&1 &
           SERVER_PID=$!
           cleanup() {
             kill "$SERVER_PID" 2>/dev/null || true
@@ -69,6 +69,7 @@ jobs:
           if (health.status !== 'ok') throw new Error(`Health endpoint status was ${health.status ?? 'missing'}`);
           if (!health.persistence) throw new Error('Health endpoint missing persistence contract');
           if (!health.sourceRegistryIntegrity) throw new Error('Health endpoint missing source registry integrity contract');
+          if (health.persistence.mode === 'memory') throw new Error('Production smoke test unexpectedly selected memory persistence');
           NODE
 
           curl --fail --silent --show-error -D /tmp/headers.txt -o /tmp/home.html http://127.0.0.1:3000/
