@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import type { ComplianceSource } from '../data/complianceSources';
 
 export type RegulatorySourceStatus = 'CURRENT' | 'STALE' | 'INVALID';
@@ -101,7 +102,15 @@ export type RegulatoryFetch = (input: RequestInfo | URL, init?: RequestInit) => 
 
 function isAllowedSourceUrl(url: string): boolean {
   try {
-    return new URL(url).protocol === 'https:';
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' || !parsed.hostname) return false;
+    // Registry URLs are destinations for a server-side request. Reject
+    // credentials and literal IP/loopback hosts so a compromised or malformed
+    // registry entry cannot turn the probe into an obvious SSRF primitive.
+    if (parsed.username || parsed.password) return false;
+    if (parsed.hostname === 'localhost' || parsed.hostname.endsWith('.localhost')) return false;
+    if (isIP(parsed.hostname) !== 0) return false;
+    return true;
   } catch {
     return false;
   }
@@ -109,7 +118,7 @@ function isAllowedSourceUrl(url: string): boolean {
 
 async function probeSource(source: ComplianceSource, fetcher: RegulatoryFetch, timeoutMs: number): Promise<Pick<RegulatorySourceMonitorResult, 'reachability' | 'httpStatus' | 'reachabilityError'>> {
   if (!isAllowedSourceUrl(source.url)) {
-    return { reachability: 'UNREACHABLE', reachabilityError: 'Source URL must use HTTPS.' };
+    return { reachability: 'UNREACHABLE', reachabilityError: 'Source URL must use HTTPS with a public hostname and no embedded credentials.' };
   }
 
   const controller = new AbortController();
