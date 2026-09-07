@@ -4,12 +4,7 @@ import { ShieldCheck, Cpu, Scale, FileText, LayoutDashboard, DollarSign, Sparkle
 interface NavbarProps { activeTab: string; setActiveTab: (tab: string) => void; onOpenAuditModal?: () => void; }
 
 const BrandMark = () => (
-  <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-sky-500 text-white shadow-sm ring-1 ring-indigo-200/50">
-    <svg viewBox="0 0 64 64" className="h-8 w-8" fill="none">
-      <path d="M32 10 17 18.5v14.5c0 13.5 7.5 20.5 15 24.5 7.5-4 15-11 15-24.5V18.5L32 10Z" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
-      <path d="m24.5 32.5 5 5 10.5-11" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  </span>
+  <img src="/branding/favicon.svg?v=2" alt="" aria-hidden="true" className="h-10 w-10 shrink-0 rounded-xl shadow-sm" />
 );
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
