@@ -15,6 +15,10 @@ function isNonEmpty(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function isSupportedAuthMethod(value: unknown): value is AuthenticatedTenantContext['authMethod'] {
+  return value === 'oidc' || value === 'sso' || value === 'service_identity';
+}
+
 /**
  * Tenant identity must come from a trusted authentication adapter. Never build
  * this context from a user-controlled tenantId header, query parameter, or
@@ -28,7 +32,7 @@ export function validateTenantContext(
   now = new Date()
 ): TenantAccessResult {
   if (!context) return { allowed: false, code: 'AUTH_REQUIRED', reason: 'Authenticated tenant context is required.' };
-  if (!isNonEmpty(context.subjectId) || !isNonEmpty(context.tenantId) || !isNonEmpty(requestedTenantId) || !isNonEmpty(context.issuedAt) || !isNonEmpty(context.expiresAt)) {
+  if (!isNonEmpty(context.subjectId) || !isNonEmpty(context.tenantId) || !isNonEmpty(requestedTenantId) || !isNonEmpty(context.issuedAt) || !isNonEmpty(context.expiresAt) || !isSupportedAuthMethod(context.authMethod)) {
     return { allowed: false, code: 'AUTH_INVALID', reason: 'Authenticated tenant context is incomplete.' };
   }
   const issuedAt = Date.parse(context.issuedAt);
