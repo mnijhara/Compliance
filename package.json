@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "node --import tsx --test --test-concurrency=1 tests/**/*.test.ts",
+    "test": "for file in tests/*.test.ts; do node --import tsx --test \"$file\" || exit 1; done",
     "test:browser": "node scripts/browser-smoke.mjs"
   },
   "dependencies": {
