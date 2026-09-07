@@ -15,13 +15,15 @@ test('memory persistence isolates records by tenant', async () => {
 });
 
 test('default persistence fails closed instead of pretending to be durable', async () => {
-  const original = process.env.COMPLYOS_PERSISTENCE;
-  delete process.env.COMPLYOS_PERSISTENCE;
-  try {
-    const store = createPersistence();
-    await assert.rejects(() => store.listEvidence('tenant-a'), (error: unknown) => error instanceof PersistenceNotConfiguredError && error.code === 'PERSISTENCE_NOT_CONFIGURED');
-  } finally {
-    if (original === undefined) delete process.env.COMPLYOS_PERSISTENCE;
-    else process.env.COMPLYOS_PERSISTENCE = original;
-  }
+  const store = createPersistence({});
+  await assert.rejects(() => store.listEvidence('tenant-a'), (error: unknown) => error instanceof PersistenceNotConfiguredError && error.code === 'PERSISTENCE_NOT_CONFIGURED');
+});
+
+test('memory persistence is available only outside production', async () => {
+  const developmentStore = createPersistence({ NODE_ENV: 'development', COMPLYOS_PERSISTENCE: 'memory' });
+  assert.ok(developmentStore instanceof MemoryCompliancePersistence);
+
+  const productionStore = createPersistence({ NODE_ENV: 'production', COMPLYOS_PERSISTENCE: 'memory' });
+  assert.ok(!(productionStore instanceof MemoryCompliancePersistence));
+  await assert.rejects(() => productionStore.listEvidence('tenant-a'), (error: unknown) => error instanceof PersistenceNotConfiguredError && error.code === 'PERSISTENCE_NOT_CONFIGURED');
 });
