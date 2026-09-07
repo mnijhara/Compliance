@@ -65,8 +65,13 @@ export class MemoryCompliancePersistence implements CompliancePersistence {
   }
 }
 
-export function createPersistence(): CompliancePersistence {
-  if (process.env.COMPLYOS_PERSISTENCE === 'memory') return new MemoryCompliancePersistence();
+export function createPersistence(env: NodeJS.ProcessEnv = process.env): CompliancePersistence {
+  // Memory persistence is intentionally unavailable in production. Allowing
+  // it there would make a deployment appear writable while losing the system
+  // of record on restart or across replicas.
+  if (env.COMPLYOS_PERSISTENCE === 'memory' && env.NODE_ENV !== 'production') {
+    return new MemoryCompliancePersistence();
+  }
   return {
     async saveEvidence() { throw new PersistenceNotConfiguredError(); },
     async listEvidence() { throw new PersistenceNotConfiguredError(); },
