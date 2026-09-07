@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createAuditEntry } from '../src/auditTrail';
-import { protectAuditEntry, verifyAuditEntry } from '../src/security/auditIntegrity';
+import { protectAuditEntry, verifyAuditChain, verifyAuditEntry } from '../src/security/auditIntegrity';
 
 test('protectAuditEntry creates a verifiable integrity hash', async () => {
   const entry = createAuditEntry({
@@ -49,4 +49,33 @@ test('hash chaining changes when the previous event changes', async () => {
   assert.notEqual(first.integrityHash, second.integrityHash);
   assert.equal(await verifyAuditEntry(first), true);
   assert.equal(await verifyAuditEntry(second), true);
+});
+
+test('verifyAuditChain validates event hashes and previous-hash links', async () => {
+  const firstEntry = createAuditEntry({
+    actor: 'system',
+    action: 'WORKFLOW_STARTED',
+    resourceType: 'workflow',
+    resourceId: 'workflow-1',
+    result: 'SUCCESS',
+    details: 'Workflow started.'
+  });
+  const secondEntry = createAuditEntry({
+    actor: 'system',
+    action: 'EVIDENCE_REVIEW',
+    resourceType: 'evidence',
+    resourceId: 'evidence-1',
+    result: 'REVIEW',
+    details: 'Evidence requires human verification.'
+  });
+
+  const first = await protectAuditEntry(firstEntry);
+  const second = await protectAuditEntry(secondEntry, first.integrityHash);
+  assert.equal(await verifyAuditChain([first, second]), true);
+
+  const brokenLink = { ...second, previousHash: 'wrong-link' };
+  assert.equal(await verifyAuditChain([first, brokenLink]), false);
+
+  const brokenHead = { ...first, previousHash: 'unexpected-head' };
+  assert.equal(await verifyAuditChain([brokenHead, second]), false);
 });
