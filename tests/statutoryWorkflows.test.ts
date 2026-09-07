@@ -60,7 +60,7 @@ test('workflow gate permits review only with current evidence and fresh authorit
   const step = workflow.steps.find(item => item.id === 'employer-profile');
   assert.ok(step);
   const evidence = [acceptedEvidence(step.id)];
-  const result = evaluateWorkflowStep(step, evidence, COMPLIANCE_SOURCES);
+  const result = evaluateWorkflowStep(step, evidence, COMPLIANCE_SOURCES, new Date('2026-09-06T23:59:59.999Z'));
   assert.equal(result.status, 'READY_FOR_REVIEW');
   assert.deepEqual(result.currentEvidenceIds, [evidence[0].id]);
   assert.deepEqual(result.verifiedSourceIds, step.sourceIds);
