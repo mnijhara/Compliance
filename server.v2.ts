@@ -8,6 +8,7 @@ import { evaluateRegulatorySources, checkRegulatorySourceReachability } from './
 import { getPersistenceReadiness } from './src/domain/persistenceReadiness';
 import { validateSourceRegistry } from './src/domain/sourceRegistry';
 import { createRateLimiter, isNonEmptyString, MAX_DOCUMENT_CHARS, MAX_MESSAGE_CHARS, MAX_POLICY_FIELD_CHARS } from './src/security/inputGuards';
+import { createProductionAuthGuard } from './src/security/productionAuth';
 import { generate as generateAI, publicStatus as aiProxyStatus } from './src/aiRouter';
 
 dotenv.config();
@@ -35,6 +36,10 @@ app.use((_req, res, next) => {
 const now = () => new Date().toISOString();
 const sourceIds = new Set(COMPLIANCE_SOURCES.map(source => source.id));
 const sourceRegistryIntegrity = validateSourceRegistry(COMPLIANCE_SOURCES);
+const productionAuthGuard = createProductionAuthGuard();
+
+// Sensitive APIs are fail-closed in production until a real identity/tenant adapter is configured.
+app.use(['/api/audit', '/api/policy-generate', '/api/chat', '/api/agent-run'], productionAuthGuard);
 
 type AuditRisk = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 type CitationStatus = 'VERIFIED_SOURCE' | 'NEEDS_SOURCE_VERIFICATION' | 'NOT_APPLICABLE';
