@@ -7,6 +7,7 @@ export type AuthDecision =
   | { allowed: false; status: 401 | 503; code: 'AUTH_REQUIRED' | 'AUTH_NOT_CONFIGURED' };
 
 type AuthorizationRequest = { headers: { authorization?: string } };
+type AuthenticatedRequest = Request & { complyosPrincipal?: TenantPrincipal };
 
 function tenantCredentialsConfigured(env: NodeJS.ProcessEnv): boolean {
   return typeof env.COMPLYOS_API_TOKENS_JSON === 'string' && env.COMPLYOS_API_TOKENS_JSON.trim().length > 0;
@@ -26,14 +27,6 @@ export function authorizeProductionRequest(
   return principal
     ? { allowed: true, reason: 'valid-token', principal }
     : { allowed: false, status: 401, code: 'AUTH_REQUIRED' };
-}
-
-declare global {
-  namespace Express {
-    interface Request {
-      complyosPrincipal?: TenantPrincipal;
-    }
-  }
 }
 
 /**
@@ -60,7 +53,8 @@ export function createProductionAuthGuard(env: NodeJS.ProcessEnv = process.env) 
         res.status(503).json({ error: 'Authenticated tenant principal is invalid.', code: 'AUTH_PRINCIPAL_INVALID' });
         return;
       }
-      req.complyosPrincipal = decision.principal;
+      const authenticatedRequest = req as AuthenticatedRequest;
+      authenticatedRequest.complyosPrincipal = decision.principal;
       next();
       return;
     }
