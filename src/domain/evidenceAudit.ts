@@ -30,10 +30,37 @@ export interface EvidenceAuditStore {
   listAuditEvents(tenantId: string, limit?: number): Promise<AuditEvent[]>;
 }
 
+export interface VerifiedPrincipal {
+  subject: string;
+  tenantId: string;
+  authenticated: true;
+}
+
+export interface TenantContext {
+  subject: string;
+  tenantId: string;
+}
+
 export function assertTenantId(tenantId: unknown): asserts tenantId is string {
   if (typeof tenantId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tenantId)) {
     throw new Error('A valid tenant identifier is required');
   }
+}
+
+/**
+ * Derives tenant context only from an already-verified principal. Tenant IDs
+ * supplied by request headers, query parameters, or bodies must never reach
+ * tenant-scoped storage APIs.
+ */
+export function requireTenantContext(principal: VerifiedPrincipal | null | undefined): TenantContext {
+  if (!principal || principal.authenticated !== true) {
+    throw new Error('Verified authentication is required');
+  }
+  if (typeof principal.subject !== 'string' || principal.subject.trim() === '') {
+    throw new Error('Verified subject is required');
+  }
+  assertTenantId(principal.tenantId);
+  return { subject: principal.subject, tenantId: principal.tenantId };
 }
 
 export function boundedAuditLimit(limit: number | undefined): number {
