@@ -43,10 +43,13 @@ export function authorizeProductionRequest(
  * is connected. Never trusts user-controlled tenant headers or query parameters.
  */
 export function createProductionAuthGuard(env: NodeJS.ProcessEnv = process.env) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const decision = authorizeProductionRequest(req, env);
-    if (decision.allowed) return next();
-    return res.status(decision.status).json({
+    if (decision.allowed) {
+      next();
+      return;
+    }
+    res.status(decision.status).json({
       error: decision.code === 'AUTH_NOT_CONFIGURED'
         ? 'Production API authentication is not configured.'
         : 'A valid Bearer token is required for this production API.',
