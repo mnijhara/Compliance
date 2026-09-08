@@ -1,4 +1,5 @@
 import { COMPLIANCE_SOURCES, COMPLIANCE_SOURCE_VERSION, isSourceFresh } from './data/complianceSources';
+import { getJurisdictionCoverage } from './data/jurisdictionCoverage';
 
 export type ControlStatus = 'PASS' | 'REVIEW' | 'FAIL' | 'NOT_ASSESSED';
 export type RiskLevel = 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
@@ -54,6 +55,7 @@ export function assessCompliance(profile: ComplianceProfile): ComplianceAssessme
   const controls: ComplianceControl[] = [];
   const india = profile.jurisdiction.toLowerCase().startsWith('india');
   const isQsr = /restaurant|qsr|food|retail|hospitality/i.test(profile.industry || '');
+  const jurisdictionCoverage = india ? getJurisdictionCoverage(profile.state) : null;
 
   if (india) {
     controls.push(control(
@@ -292,20 +294,32 @@ export function assessCompliance(profile: ComplianceProfile): ComplianceAssessme
     ));
   }
 
+  const caveats = [
+    'This is an establishment-level compliance assessment aid, not a legal opinion or certification or filing submission.',
+    'A REVIEW status means evidence, worker classification or jurisdiction-specific rules are required; it is not a finding of non-compliance.',
+    'A numeric compliance score is intentionally withheld until verified evidence can support deterministic PASS/FAIL outcomes.',
+    'For multi-site employers, assess each establishment/site or an explicitly controlled cluster; do not infer site-level compliance from corporate headcount.',
+    'Primary legislation, notified rules, Gazette notifications and official government directions prevail over summaries and AI-generated text.'
+  ];
+
+  if (jurisdictionCoverage) {
+    caveats.push(
+      jurisdictionCoverage.status === 'PARTIAL'
+        ? `${jurisdictionCoverage.jurisdiction} has registered official sources, but control-level state applicability is not fully mapped; state-specific conclusions remain REVIEW/NOT_ASSESSED until verified.`
+        : jurisdictionCoverage.status === 'NOT_VERIFIED'
+          ? `${jurisdictionCoverage.jurisdiction} has no registered state evidence pack; state-specific applicability is not verified and must not be inferred.`
+          : `${jurisdictionCoverage.jurisdiction} has a verified state evidence pack; individual controls still require control-level applicability and evidence.`
+    );
+  }
+
   return {
     assessedAt: new Date().toISOString(),
-    engineVersion: '0.3.0-establishment-evidence-first',
+    engineVersion: '0.3.1-establishment-evidence-first',
     sourceVersion: COMPLIANCE_SOURCE_VERSION,
     profile,
     score: null,
     confidence: india ? 'LOW' : 'LOW',
     controls,
-    caveats: [
-      'This is an establishment-level compliance assessment aid, not a legal opinion or certification or filing submission.',
-      'A REVIEW status means evidence, worker classification or jurisdiction-specific rules are required; it is not a finding of non-compliance.',
-      'A numeric compliance score is intentionally withheld until verified evidence can support deterministic PASS/FAIL outcomes.',
-      'For multi-site employers, assess each establishment/site or an explicitly controlled cluster; do not infer site-level compliance from corporate headcount.',
-      'Primary legislation, notified rules, Gazette notifications and official government directions prevail over summaries and AI-generated text.'
-    ]
+    caveats
   };
 }
