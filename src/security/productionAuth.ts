@@ -1,16 +1,15 @@
-import * as crypto from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { createRateLimiter } from './inputGuards';
+import { isTenantPrincipal, resolveTenantPrincipal, type TenantPrincipal } from './tenantAuth';
 
 export type AuthDecision =
-  | { allowed: true; reason: 'development-bypass' | 'valid-token' }
+  | { allowed: true; reason: 'development-bypass' | 'valid-token'; principal?: TenantPrincipal }
   | { allowed: false; status: 401 | 503; code: 'AUTH_REQUIRED' | 'AUTH_NOT_CONFIGURED' };
 
 type AuthorizationRequest = { headers: { authorization?: string } };
 
-function configuredToken(env: NodeJS.ProcessEnv): string | null {
-  const token = env.COMPLYOS_API_TOKEN;
-  return typeof token === 'string' && token.length >= 32 ? token : null;
+function tenantCredentialsConfigured(env: NodeJS.ProcessEnv): boolean {
+  return typeof env.COMPLYOS_API_TOKENS_JSON === 'string' && env.COMPLYOS_API_TOKENS_JSON.trim().length > 0;
 }
 
 export function authorizeProductionRequest(
@@ -19,31 +18,29 @@ export function authorizeProductionRequest(
 ): AuthDecision {
   if (env.NODE_ENV !== 'production') return { allowed: true, reason: 'development-bypass' };
 
-  const expected = configuredToken(env);
-  if (!expected) return { allowed: false, status: 503, code: 'AUTH_NOT_CONFIGURED' };
-
-  const header = request.headers.authorization;
-  if (typeof header !== 'string' || !header.startsWith('Bearer ')) {
-    return { allowed: false, status: 401, code: 'AUTH_REQUIRED' };
+  if (!tenantCredentialsConfigured(env)) {
+    return { allowed: false, status: 503, code: 'AUTH_NOT_CONFIGURED' };
   }
 
-  const supplied = header.slice('Bearer '.length).trim();
-  if (!supplied) return { allowed: false, status: 401, code: 'AUTH_REQUIRED' };
-
-  const expectedBytes = Buffer.from(expected, 'utf8');
-  const suppliedBytes = Buffer.from(supplied, 'utf8');
-  const sameLength = expectedBytes.length === suppliedBytes.length;
-  const comparisonBytes = sameLength ? suppliedBytes : Buffer.alloc(expectedBytes.length);
-  const matches = crypto.timingSafeEqual(expectedBytes, comparisonBytes) && sameLength;
-
-  return matches
-    ? { allowed: true, reason: 'valid-token' }
+  const principal = resolveTenantPrincipal(request.headers.authorization, env);
+  return principal
+    ? { allowed: true, reason: 'valid-token', principal }
     : { allowed: false, status: 401, code: 'AUTH_REQUIRED' };
 }
 
+declare global {
+  namespace Express {
+    interface Request {
+      complyosPrincipal?: TenantPrincipal;
+    }
+  }
+}
+
 /**
- * Protects sensitive production API routes until a real identity/tenant adapter
- * is connected. Never trusts user-controlled tenant headers or query parameters.
+ * Protects sensitive production API routes. In production, tenant identity is
+ * derived exclusively from a server-configured opaque token credential and is
+ * attached to the request as a verified principal. User-controlled tenant IDs
+ * in headers, query parameters, and bodies are never authorization inputs.
  */
 export function createProductionAuthGuard(env: NodeJS.ProcessEnv = process.env) {
   const authRateLimit = createRateLimiter(60, 60_000);
@@ -59,18 +56,21 @@ export function createProductionAuthGuard(env: NodeJS.ProcessEnv = process.env) 
 
     const decision = authorizeProductionRequest(req, env);
     if (decision.allowed) {
+      if (decision.principal && !isTenantPrincipal(decision.principal)) {
+        res.status(503).json({ error: 'Authenticated tenant principal is invalid.', code: 'AUTH_PRINCIPAL_INVALID' });
+        return;
+      }
+      req.complyosPrincipal = decision.principal;
       next();
       return;
     }
 
-    if (decision.allowed === false) {
-      const { status, code } = decision;
-      res.status(status).json({
-        error: code === 'AUTH_NOT_CONFIGURED'
-          ? 'Production API authentication is not configured.'
-          : 'A valid Bearer token is required for this production API.',
-        code
-      });
-    }
+    const { status, code } = decision;
+    res.status(status).json({
+      error: code === 'AUTH_NOT_CONFIGURED'
+        ? 'Production API authentication is not configured for tenant-aware access.'
+        : 'A valid tenant-scoped Bearer credential is required for this production API.',
+      code
+    });
   };
 }
