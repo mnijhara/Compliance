@@ -62,11 +62,15 @@ export function createProductionAuthGuard(env: NodeJS.ProcessEnv = process.env) 
       next();
       return;
     }
-    res.status(decision.status).json({
-      error: decision.code === 'AUTH_NOT_CONFIGURED'
-        ? 'Production API authentication is not configured.'
-        : 'A valid Bearer token is required for this production API.',
-      code: decision.code
-    });
+
+    if (decision.allowed === false) {
+      const { status, code } = decision;
+      res.status(status).json({
+        error: code === 'AUTH_NOT_CONFIGURED'
+          ? 'Production API authentication is not configured.'
+          : 'A valid Bearer token is required for this production API.',
+        code
+      });
+    }
   };
 }
