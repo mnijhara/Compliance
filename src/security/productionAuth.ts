@@ -1,5 +1,6 @@
 import * as crypto from 'node:crypto';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import { createRateLimiter } from './inputGuards';
 
 export type AuthDecision =
   | { allowed: true; reason: 'development-bypass' | 'valid-token' }
@@ -43,7 +44,16 @@ export function authorizeProductionRequest(
  * is connected. Never trusts user-controlled tenant headers or query parameters.
  */
 export function createProductionAuthGuard(env: NodeJS.ProcessEnv = process.env): RequestHandler {
+  const authRateLimit = createRateLimiter(60, 60_000);
   const guard: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
+    if (env.NODE_ENV === 'production' && !authRateLimit(req.ip || 'unknown')) {
+      res.status(429).json({
+        error: 'Too many authentication attempts. Please retry shortly.',
+        code: 'AUTH_RATE_LIMITED'
+      });
+      return;
+    }
+
     const decision = authorizeProductionRequest(req, env);
     if (decision.allowed) {
       next();
