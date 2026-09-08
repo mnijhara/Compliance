@@ -16,7 +16,8 @@
     "test": "for file in tests/*.test.ts; do node --import tsx --test \"$file\" || exit 1; done",
     "test:browser": "node scripts/browser-smoke.mjs",
     "test:compliance-sources": "node scripts/validate-compliance-sources.mjs",
-    "test:compliance-source-health": "node scripts/check-compliance-source-health.mjs"
+    "test:compliance-source-health": "node scripts/check-compliance-source-health.mjs",
+    "test:persistence-schema": "node scripts/validate-persistence-schema.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
