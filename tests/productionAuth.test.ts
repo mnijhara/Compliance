@@ -2,7 +2,9 @@ import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { authorizeProductionRequest } from '../src/security/productionAuth';
 
-const request = (authorization?: string) => ({ headers: authorization ? { authorization } : {} });
+const request = (authorization?: string): { headers: { authorization?: string } } => ({
+  headers: authorization ? { authorization } : {}
+});
 
 const productionEnv = { NODE_ENV: 'production', COMPLYOS_API_TOKEN: 'a'.repeat(32) } as NodeJS.ProcessEnv;
 
