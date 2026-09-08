@@ -1,9 +1,10 @@
 import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { Request } from 'express';
 import { authorizeProductionRequest } from '../src/security/productionAuth';
 
-const request = (authorization?: string): Pick<Request, 'headers'> => ({
+type TestRequest = { headers: { authorization?: string } };
+
+const request = (authorization?: string): TestRequest => ({
   headers: authorization ? { authorization } : {}
 });
 
