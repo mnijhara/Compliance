@@ -25,6 +25,8 @@ jobs:
         run: npm install
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Validate persistence schema invariants
+        run: npm run test:persistence-schema
       - name: Typecheck
         run: npm run lint
       - name: Unit tests
