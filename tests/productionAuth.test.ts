@@ -1,5 +1,5 @@
 import * as assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'node:test';
 import { authorizeProductionRequest } from '../src/security/productionAuth';
 
 const request = (authorization?: string) => ({ headers: authorization ? { authorization } : {} });
