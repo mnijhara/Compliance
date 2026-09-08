@@ -6,13 +6,15 @@ export type AuthDecision =
   | { allowed: true; reason: 'development-bypass' | 'valid-token' }
   | { allowed: false; status: 401 | 503; code: 'AUTH_REQUIRED' | 'AUTH_NOT_CONFIGURED' };
 
+type AuthorizationRequest = { headers: { authorization?: string } };
+
 function configuredToken(env: NodeJS.ProcessEnv): string | null {
   const token = env.COMPLYOS_API_TOKEN;
   return typeof token === 'string' && token.length >= 32 ? token : null;
 }
 
 export function authorizeProductionRequest(
-  request: Pick<Request, 'headers'>,
+  request: AuthorizationRequest,
   env: NodeJS.ProcessEnv = process.env
 ): AuthDecision {
   if (env.NODE_ENV !== 'production') return { allowed: true, reason: 'development-bypass' };
