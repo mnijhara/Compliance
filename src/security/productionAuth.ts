@@ -1,5 +1,5 @@
 import * as crypto from 'node:crypto';
-import type { NextFunction, Request, Response } from 'express';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
 
 export type AuthDecision =
   | { allowed: true; reason: 'development-bypass' | 'valid-token' }
@@ -42,8 +42,8 @@ export function authorizeProductionRequest(
  * Protects sensitive production API routes until a real identity/tenant adapter
  * is connected. Never trusts user-controlled tenant headers or query parameters.
  */
-export function createProductionAuthGuard(env: NodeJS.ProcessEnv = process.env) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+export function createProductionAuthGuard(env: NodeJS.ProcessEnv = process.env): RequestHandler {
+  const guard: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
     const decision = authorizeProductionRequest(req, env);
     if (decision.allowed) {
       next();
@@ -56,4 +56,6 @@ export function createProductionAuthGuard(env: NodeJS.ProcessEnv = process.env) 
       code: decision.code
     });
   };
+
+  return guard;
 }
