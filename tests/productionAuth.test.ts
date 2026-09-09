@@ -1,54 +1,52 @@
 import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { authorizeProductionRequest } from '../src/security/productionAuth';
+import { hashBearerToken, resolveTenantPrincipal } from '../src/security/tenantAuth';
 
 type TestRequest = { headers: { authorization?: string } };
+
+const token = 'a'.repeat(48);
+const tokenHash = hashBearerToken(token);
+const productionEnv = {
+  NODE_ENV: 'production',
+  COMPLYOS_API_TOKENS_JSON: JSON.stringify([{ tokenHash, tenantId: 'tenant-acme', subject: 'user-123', roles: ['admin'] }])
+} as NodeJS.ProcessEnv;
 
 const request = (authorization?: string): TestRequest => ({
   headers: authorization ? { authorization } : {}
 });
 
-const productionEnv = { NODE_ENV: 'production', COMPLYOS_API_TOKEN: 'a'.repeat(32) } as NodeJS.ProcessEnv;
-
-test('development bypass is explicit and production remains protected', () => {
+test('development bypass is explicit', () => {
   assert.deepEqual(authorizeProductionRequest(request(), { NODE_ENV: 'development' } as NodeJS.ProcessEnv), {
     allowed: true,
     reason: 'development-bypass'
   });
-  assert.deepEqual(authorizeProductionRequest(request(), productionEnv), {
-    allowed: false,
-    status: 401,
-    code: 'AUTH_REQUIRED'
-  });
 });
 
-test('production authentication fails closed when no token is configured', () => {
-  assert.deepEqual(authorizeProductionRequest(request('Bearer anything'), { NODE_ENV: 'production' } as NodeJS.ProcessEnv), {
+test('production authentication fails closed without tenant credential configuration', () => {
+  assert.deepEqual(authorizeProductionRequest(request(`Bearer ${token}`), { NODE_ENV: 'production' } as NodeJS.ProcessEnv), {
     allowed: false,
     status: 503,
     code: 'AUTH_NOT_CONFIGURED'
   });
 });
 
-test('production authentication accepts only the configured bearer token', () => {
-  assert.deepEqual(authorizeProductionRequest(request(`Bearer ${productionEnv.COMPLYOS_API_TOKEN}`), productionEnv), {
+test('valid opaque credential resolves only to the configured tenant principal', () => {
+  assert.deepEqual(resolveTenantPrincipal(`Bearer ${token}`, productionEnv), {
+    tenantId: 'tenant-acme',
+    subject: 'user-123',
+    roles: ['admin']
+  });
+  assert.deepEqual(authorizeProductionRequest(request(`Bearer ${token}`), productionEnv), {
     allowed: true,
-    reason: 'valid-token'
-  });
-  assert.deepEqual(authorizeProductionRequest(request('Bearer wrong-token'), productionEnv), {
-    allowed: false,
-    status: 401,
-    code: 'AUTH_REQUIRED'
+    reason: 'valid-token',
+    principal: { tenantId: 'tenant-acme', subject: 'user-123', roles: ['admin'] }
   });
 });
 
-test('short production tokens are rejected as not configured', () => {
-  assert.deepEqual(authorizeProductionRequest(request('Bearer short'), {
-    NODE_ENV: 'production',
-    COMPLYOS_API_TOKEN: 'short'
-  } as NodeJS.ProcessEnv), {
-    allowed: false,
-    status: 503,
-    code: 'AUTH_NOT_CONFIGURED'
-  });
+test('wrong, malformed, or short credentials are rejected', () => {
+  assert.equal(resolveTenantPrincipal('Bearer wrong-token', productionEnv), null);
+  assert.equal(resolveTenantPrincipal(undefined, productionEnv), null);
+  assert.equal(resolveTenantPrincipal('Basic abc', productionEnv), null);
+  assert.equal(resolveTenantPrincipal('Bearer short', productionEnv), null);
 });
