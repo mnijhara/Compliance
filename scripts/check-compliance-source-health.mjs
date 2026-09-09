@@ -25,34 +25,56 @@ const now = new Date();
 const cutoff = now.getTime() - maxAgeDays * 24 * 60 * 60 * 1000;
 const results = [];
 
+async function request(url, method) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      method,
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: { 'user-agent': 'ComplyOS-source-health/1.1' },
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function probe(url) {
+  let lastResult;
   let lastError;
+
   for (let attempt = 0; attempt <= retries; attempt += 1) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      let response = await fetch(url, {
-        method: 'HEAD',
-        redirect: 'follow',
-        signal: controller.signal,
-        headers: { 'user-agent': 'ComplyOS-source-health/1.0' },
-      });
-      if (response.status === 405 || response.status === 501) {
-        response = await fetch(url, {
-          method: 'GET',
-          redirect: 'follow',
-          signal: controller.signal,
-          headers: { 'user-agent': 'ComplyOS-source-health/1.0' },
-        });
+      // Some government/CDN endpoints reject HEAD while serving the same URL
+      // successfully with GET. HEAD is still preferred because it avoids
+      // downloading statutory PDFs during routine health checks.
+      let response = await request(url, 'HEAD');
+      if (!response.ok || response.status === 405 || response.status === 501) {
+        response = await request(url, 'GET');
       }
-      return { ok: response.ok, status: response.status, finalUrl: response.url, attempts: attempt + 1 };
+
+      lastResult = {
+        ok: response.ok,
+        status: response.status,
+        finalUrl: response.url,
+        attempts: attempt + 1,
+      };
+
+      if (response.ok) return lastResult;
+
+      // Retry transient upstream failures, but do not turn deterministic 4xx
+      // responses into false positives. A strict scheduled run should still
+      // fail when an authoritative source is genuinely unavailable.
+      if (response.status < 500 && response.status !== 429) return lastResult;
     } catch (error) {
       lastError = error;
-    } finally {
-      clearTimeout(timer);
     }
+
     if (attempt < retries) await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
   }
+
+  if (lastResult) return lastResult;
   throw lastError;
 }
 
