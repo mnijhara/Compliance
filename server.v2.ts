@@ -43,6 +43,9 @@ app.use('/api/audit', productionAuthGuard);
 app.use('/api/policy-generate', productionAuthGuard);
 app.use('/api/chat', productionAuthGuard);
 app.use('/api/agent-run', productionAuthGuard);
+// Compliance assessments can influence statutory workflow decisions, so they must
+// use the same authenticated production boundary as other tenant-sensitive APIs.
+app.use('/api/compliance/assess', productionAuthGuard);
 
 type AuditRisk = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 type CitationStatus = 'VERIFIED_SOURCE' | 'NEEDS_SOURCE_VERIFICATION' | 'NOT_APPLICABLE';
@@ -184,14 +187,13 @@ async function startServer() {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
+    app.use(express.static(path.resolve(process.cwd(), 'dist')));
+    app.get('*', (_req, res) => res.sendFile(path.resolve(process.cwd(), 'dist/index.html')));
   }
-  app.listen(PORT, '0.0.0.0', () => console.log(`ComplyOS running on port ${PORT}`));
+  app.listen(PORT, () => console.log(`ComplyOS server listening on port ${PORT}`));
 }
 
 startServer().catch((error) => {
-  console.error('ComplyOS startup failed:', error);
-  process.exitCode = 1;
+  console.error('Failed to start ComplyOS server', error);
+  process.exit(1);
 });
