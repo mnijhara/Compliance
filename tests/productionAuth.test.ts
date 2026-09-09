@@ -50,3 +50,20 @@ test('wrong, malformed, or short credentials are rejected', () => {
   assert.equal(resolveTenantPrincipal('Basic abc', productionEnv), null);
   assert.equal(resolveTenantPrincipal('Bearer short', productionEnv), null);
 });
+
+test('duplicate token hashes fail closed instead of selecting by configuration order', () => {
+  const ambiguousEnv = {
+    NODE_ENV: 'production',
+    COMPLYOS_API_TOKENS_JSON: JSON.stringify([
+      { tokenHash, tenantId: 'tenant-acme', subject: 'user-123', roles: ['admin'] },
+      { tokenHash, tenantId: 'tenant-other', subject: 'user-456', roles: ['admin'] }
+    ])
+  } as NodeJS.ProcessEnv;
+
+  assert.equal(resolveTenantPrincipal(`Bearer ${token}`, ambiguousEnv), null);
+  assert.deepEqual(authorizeProductionRequest(request(`Bearer ${token}`), ambiguousEnv), {
+    allowed: false,
+    status: 401,
+    code: 'AUTH_REQUIRED'
+  });
+});
