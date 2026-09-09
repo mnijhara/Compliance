@@ -59,12 +59,14 @@ export function createProductionAuthGuard(env: NodeJS.ProcessEnv = process.env) 
       return;
     }
 
-    const { status, code } = decision;
-    res.status(status).json({
-      error: code === 'AUTH_NOT_CONFIGURED'
-        ? 'Production API authentication is not configured for tenant-aware access.'
-        : 'A valid tenant-scoped Bearer credential is required for this production API.',
-      code
-    });
+    if (decision.allowed === false) {
+      const { status, code } = decision;
+      res.status(status).json({
+        error: code === 'AUTH_NOT_CONFIGURED'
+          ? 'Production API authentication is not configured for tenant-aware access.'
+          : 'A valid tenant-scoped Bearer credential is required for this production API.',
+        code
+      });
+    }
   };
 }
