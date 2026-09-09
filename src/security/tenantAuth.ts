@@ -26,7 +26,7 @@ function parseCredentials(raw: string | undefined): ConfiguredCredential[] {
   }
   if (!Array.isArray(parsed)) return [];
 
-  return parsed.flatMap((entry): ConfiguredCredential[] => {
+  const credentials = parsed.flatMap((entry): ConfiguredCredential[] => {
     if (!entry || typeof entry !== 'object') return [];
     const candidate = entry as Partial<ConfiguredCredential>;
     if (
@@ -39,6 +39,15 @@ function parseCredentials(raw: string | undefined): ConfiguredCredential[] {
       : [];
     return [{ tokenHash: candidate.tokenHash, tenantId: candidate.tenantId, subject: candidate.subject, roles }];
   });
+
+  // A bearer credential must identify exactly one tenant. If configuration
+  // accidentally maps the same token hash to multiple principals, fail closed
+  // for that hash instead of making array order an authorization decision.
+  const counts = new Map<string, number>();
+  for (const credential of credentials) {
+    counts.set(credential.tokenHash, (counts.get(credential.tokenHash) ?? 0) + 1);
+  }
+  return credentials.filter((credential) => counts.get(credential.tokenHash) === 1);
 }
 
 export function hashBearerToken(token: string): string {
