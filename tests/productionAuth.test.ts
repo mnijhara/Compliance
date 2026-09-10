@@ -1,11 +1,10 @@
 import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { Request } from 'express';
 import { authorizeProductionRequest, tenantContextMatchesPrincipal } from '../src/security/productionAuth';
 import { hashBearerToken, resolveTenantPrincipal } from '../src/security/tenantAuth';
 
-type TestRequest = { headers: { authorization?: string; 'x-tenant-id'?: string }; query?: Request['query']; body?: Request['body'] };
-type TenantContextRequest = Pick<Request, 'headers' | 'query' | 'body'>;
+type TestRequest = { headers: { authorization?: string; 'x-tenant-id'?: string }; query?: Record<string, unknown>; body?: Record<string, unknown> };
+type TenantContextRequest = { headers: Record<string, string | string[] | undefined>; query?: Record<string, unknown>; body?: Record<string, unknown> };
 
 const token = 'a'.repeat(48);
 const tokenHash = hashBearerToken(token);
