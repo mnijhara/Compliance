@@ -8,6 +8,11 @@ export type AuthDecision =
 
 type AuthorizationRequest = { headers: { authorization?: string } };
 type AuthenticatedRequest = Request & { complyosPrincipal?: TenantPrincipal };
+type TenantContextRequest = {
+  headers: Record<string, string | string[] | undefined>;
+  query?: Record<string, unknown>;
+  body?: Record<string, unknown>;
+};
 
 function tenantCredentialsConfigured(env: NodeJS.ProcessEnv): boolean {
   return typeof env.COMPLYOS_API_TOKENS_JSON === 'string' && env.COMPLYOS_API_TOKENS_JSON.trim().length > 0;
@@ -40,7 +45,7 @@ function scalarTenantId(value: unknown): string | undefined {
  * duplicate identity data in request bodies or query strings.
  */
 export function tenantContextMatchesPrincipal(
-  request: Pick<Request, 'headers' | 'query' | 'body'>,
+  request: TenantContextRequest,
   principal: TenantPrincipal
 ): boolean {
   const headerTenantId = scalarTenantId(request.headers['x-tenant-id']);
