@@ -30,72 +30,31 @@ const MS_PER_DAY = 86_400_000;
 const DEFAULT_REACHABILITY_TIMEOUT_MS = 4_000;
 const MAX_REACHABILITY_CONCURRENCY = 4;
 
-export function evaluateRegulatorySources(
-  sources: ComplianceSource[],
-  asOf: string,
-  maxAgeDays = 30
-): RegulatoryMonitoringSnapshot {
+export function evaluateRegulatorySources(sources: ComplianceSource[], asOf: string, maxAgeDays = 30): RegulatoryMonitoringSnapshot {
   const asOfMs = Date.parse(asOf);
   const safeMaxAgeDays = Number.isFinite(maxAgeDays) && maxAgeDays >= 0 ? maxAgeDays : 30;
   const results = sources.map((source): RegulatorySourceMonitorResult => {
     const verifiedAtMs = Date.parse(source.lastVerified);
     if (!Number.isFinite(asOfMs) || !Number.isFinite(verifiedAtMs)) {
-      return {
-        sourceId: source.id,
-        status: 'INVALID',
-        verifiedAt: source.lastVerified,
-        ageDays: null,
-        maxAgeDays: safeMaxAgeDays,
-        reason: 'Verification date or monitoring date is invalid.',
-        reachability: 'NOT_CHECKED'
-      };
+      return { sourceId: source.id, status: 'INVALID', verifiedAt: source.lastVerified, ageDays: null, maxAgeDays: safeMaxAgeDays, reason: 'Verification date or monitoring date is invalid.', reachability: 'NOT_CHECKED' };
     }
-
-    const ageDays = Math.max(0, Math.floor((asOfMs - verifiedAtMs) / MS_PER_DAY));
+    if (verifiedAtMs > asOfMs) {
+      return { sourceId: source.id, status: 'INVALID', verifiedAt: source.lastVerified, ageDays: null, maxAgeDays: safeMaxAgeDays, reason: 'Verification date is later than the monitoring date.', reachability: 'NOT_CHECKED' };
+    }
+    const ageDays = Math.floor((asOfMs - verifiedAtMs) / MS_PER_DAY);
     if (ageDays > safeMaxAgeDays) {
-      return {
-        sourceId: source.id,
-        status: 'STALE',
-        verifiedAt: source.lastVerified,
-        ageDays,
-        maxAgeDays: safeMaxAgeDays,
-        reason: `Source verification is ${ageDays} days old; refresh the official source before relying on it.`,
-        reachability: 'NOT_CHECKED'
-      };
+      return { sourceId: source.id, status: 'STALE', verifiedAt: source.lastVerified, ageDays, maxAgeDays: safeMaxAgeDays, reason: `Source verification is ${ageDays} days old; refresh the official source before relying on it.`, reachability: 'NOT_CHECKED' };
     }
-
-    return {
-      sourceId: source.id,
-      status: 'CURRENT',
-      verifiedAt: source.lastVerified,
-      ageDays,
-      maxAgeDays: safeMaxAgeDays,
-      reason: 'Source verification is within the configured monitoring window.',
-      reachability: 'NOT_CHECKED'
-    };
+    return { sourceId: source.id, status: 'CURRENT', verifiedAt: source.lastVerified, ageDays, maxAgeDays: safeMaxAgeDays, reason: 'Source verification is within the configured monitoring window.', reachability: 'NOT_CHECKED' };
   });
-
   return buildSnapshot(results, asOf, safeMaxAgeDays);
 }
 
-function buildSnapshot(
-  sources: RegulatorySourceMonitorResult[],
-  asOf: string,
-  maxAgeDays: number
-): RegulatoryMonitoringSnapshot {
+function buildSnapshot(sources: RegulatorySourceMonitorResult[], asOf: string, maxAgeDays: number): RegulatoryMonitoringSnapshot {
   const staleSourceIds = sources.filter(result => result.status === 'STALE').map(result => result.sourceId);
   const invalidSourceIds = sources.filter(result => result.status === 'INVALID').map(result => result.sourceId);
   const unreachableSourceIds = sources.filter(result => result.reachability === 'UNREACHABLE').map(result => result.sourceId);
-
-  return {
-    asOf,
-    maxAgeDays,
-    status: invalidSourceIds.length > 0 ? 'BLOCKED' : staleSourceIds.length > 0 || unreachableSourceIds.length > 0 ? 'REVIEW' : 'READY',
-    sources,
-    staleSourceIds,
-    invalidSourceIds,
-    unreachableSourceIds
-  };
+  return { asOf, maxAgeDays, status: invalidSourceIds.length > 0 ? 'BLOCKED' : staleSourceIds.length > 0 || unreachableSourceIds.length > 0 ? 'REVIEW' : 'READY', sources, staleSourceIds, invalidSourceIds, unreachableSourceIds };
 }
 
 export type RegulatoryFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -104,51 +63,27 @@ function isAllowedSourceUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'https:' || !parsed.hostname) return false;
-    // Registry URLs are destinations for a server-side request. Reject
-    // credentials and literal IP/loopback hosts so a compromised or malformed
-    // registry entry cannot turn the probe into an obvious SSRF primitive.
     if (parsed.username || parsed.password) return false;
     if (parsed.hostname === 'localhost' || parsed.hostname.endsWith('.localhost')) return false;
     if (isIP(parsed.hostname) !== 0) return false;
     return true;
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
 async function probeSource(source: ComplianceSource, fetcher: RegulatoryFetch, timeoutMs: number): Promise<Pick<RegulatorySourceMonitorResult, 'reachability' | 'httpStatus' | 'reachabilityError'>> {
-  if (!isAllowedSourceUrl(source.url)) {
-    return { reachability: 'UNREACHABLE', reachabilityError: 'Source URL must use HTTPS with a public hostname and no embedded credentials.' };
-  }
-
+  if (!isAllowedSourceUrl(source.url)) return { reachability: 'UNREACHABLE', reachabilityError: 'Source URL must use HTTPS with a public hostname and no embedded credentials.' };
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    // Do not follow redirects. A trusted registry URL must never be allowed to
-    // redirect a server-side probe onto an arbitrary host or protocol.
     const response = await fetcher(source.url, { method: 'HEAD', redirect: 'manual', signal: controller.signal });
-    if (response.ok || (response.status >= 300 && response.status < 400) || response.status === 405) {
-      return { reachability: 'REACHABLE', httpStatus: response.status };
-    }
+    if (response.ok || (response.status >= 300 && response.status < 400) || response.status === 405) return { reachability: 'REACHABLE', httpStatus: response.status };
     return { reachability: 'UNREACHABLE', httpStatus: response.status, reachabilityError: `Official source returned HTTP ${response.status}.` };
   } catch (error) {
     return { reachability: 'UNREACHABLE', reachabilityError: error instanceof Error ? error.name === 'AbortError' ? 'Source check timed out.' : error.message : 'Source check failed.' };
-  } finally {
-    clearTimeout(timeout);
-  }
+  } finally { clearTimeout(timeout); }
 }
 
-/**
- * Performs network checks only against URLs already present in the trusted
- * source registry. A failed reachability check triggers REVIEW; it never
- * upgrades a control or asserts non-compliance.
- */
-export async function checkRegulatorySourceReachability(
-  snapshot: RegulatoryMonitoringSnapshot,
-  sources: ComplianceSource[],
-  fetcher: RegulatoryFetch = fetch,
-  timeoutMs = DEFAULT_REACHABILITY_TIMEOUT_MS
-): Promise<RegulatoryMonitoringSnapshot> {
+export async function checkRegulatorySourceReachability(snapshot: RegulatoryMonitoringSnapshot, sources: ComplianceSource[], fetcher: RegulatoryFetch = fetch, timeoutMs = DEFAULT_REACHABILITY_TIMEOUT_MS): Promise<RegulatoryMonitoringSnapshot> {
   const sourceById = new Map(sources.map(source => [source.id, source]));
   const results = [...snapshot.sources];
   let cursor = 0;
@@ -158,14 +93,10 @@ export async function checkRegulatorySourceReachability(
       if (index >= results.length) return;
       const result = results[index];
       const source = sourceById.get(result.sourceId);
-      if (!source) {
-        results[index] = { ...result, reachability: 'UNREACHABLE', reachabilityError: 'Source is missing from the registry.' };
-        continue;
-      }
+      if (!source) { results[index] = { ...result, reachability: 'UNREACHABLE', reachabilityError: 'Source is missing from the registry.' }; continue; }
       results[index] = { ...result, ...(await probeSource(source, fetcher, timeoutMs)) };
     }
   };
-
   const workerCount = Math.min(MAX_REACHABILITY_CONCURRENCY, results.length);
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
   return buildSnapshot(results, snapshot.asOf, snapshot.maxAgeDays);
