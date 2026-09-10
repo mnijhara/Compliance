@@ -1,4 +1,5 @@
 import { COMPLIANCE_SOURCES, COMPLIANCE_SOURCE_VERSION, isSourceFresh } from './data/complianceSources';
+import { getJurisdictionProfile } from './data/jurisdictionProfiles';
 
 export type ControlStatus = 'PASS' | 'REVIEW' | 'FAIL' | 'NOT_ASSESSED';
 export type RiskLevel = 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
@@ -56,6 +57,36 @@ export function assessCompliance(profile: ComplianceProfile): ComplianceAssessme
   const isQsr = /restaurant|qsr|food|retail|hospitality/i.test(profile.industry || '');
 
   if (india) {
+    const jurisdictionProfile = getJurisdictionProfile(profile.jurisdiction);
+    if (jurisdictionProfile && jurisdictionProfile.state !== 'National') {
+      const stateSourceIds = jurisdictionProfile.authoritativeSourceIds;
+      controls.push(control(
+        'state-applicability-evidence',
+        `${jurisdictionProfile.state} state applicability and source verification`,
+        `${jurisdictionProfile.state} labour framework`,
+        'REVIEW',
+        'HIGH',
+        jurisdictionProfile.status === 'SOURCE_VERIFIED'
+          ? 'The jurisdiction has a registered authoritative source pack, but applicability still depends on establishment facts and the current operative rule or notification.'
+          : 'The state profile is intentionally marked SOURCE_REQUIRED. A registry entry identifies where verification must occur; it does not establish the operative rule or the establishment\'s applicability.',
+        ['Exact establishment/workplace location', 'Establishment type', 'Industry/activity', 'Worker categories', 'Current state Gazette/rules/notifications', 'Verification date'],
+        stateSourceIds,
+        'Verify the current state primary source for each applicable control and record the source URL, verification date and applicability rationale before issuing a state-specific conclusion.'
+      ));
+    } else if (!jurisdictionProfile && profile.jurisdiction.toLowerCase() !== 'india - national') {
+      controls.push(control(
+        'state-applicability-evidence',
+        'State applicability source pack',
+        'India state labour framework',
+        'NOT_ASSESSED',
+        'HIGH',
+        'This state is not yet represented by a curated authoritative source profile. The engine must not infer state-law applicability from a generic national source.',
+        ['Exact state/workplace location', 'Authoritative state labour authority', 'Current Gazette/rules/notifications', 'Verification date'],
+        [],
+        'Configure and verify an authoritative source pack for the requested state before relying on state-specific results.'
+      ));
+    }
+
     controls.push(control(
       'labour-codes-baseline',
       'Four Labour Codes applicability baseline',
@@ -294,17 +325,18 @@ export function assessCompliance(profile: ComplianceProfile): ComplianceAssessme
 
   return {
     assessedAt: new Date().toISOString(),
-    engineVersion: '0.3.0-establishment-evidence-first',
+    engineVersion: '0.3.1-establishment-state-gated',
     sourceVersion: COMPLIANCE_SOURCE_VERSION,
     profile,
     score: null,
-    confidence: india ? 'LOW' : 'LOW',
+    confidence: 'LOW',
     controls,
     caveats: [
       'This is an establishment-level compliance assessment aid, not a legal opinion or certification or filing submission.',
       'A REVIEW status means evidence, worker classification or jurisdiction-specific rules are required; it is not a finding of non-compliance.',
       'A numeric compliance score is intentionally withheld until verified evidence can support deterministic PASS/FAIL outcomes.',
       'For multi-site employers, assess each establishment/site or an explicitly controlled cluster; do not infer site-level compliance from corporate headcount.',
+      'State-specific results require an authoritative source mapped to the control and a recorded verification date; a state profile alone does not establish applicability.',
       'Primary legislation, notified rules, Gazette notifications and official government directions prevail over summaries and AI-generated text.'
     ]
   };
