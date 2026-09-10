@@ -5,6 +5,8 @@ import { hashBearerToken, resolveTenantPrincipal } from '../src/security/tenantA
 
 type TestRequest = { headers: { authorization?: string; 'x-tenant-id'?: string }; query?: Record<string, unknown>; body?: Record<string, unknown> };
 
+type TenantContextRequest = Pick<TestRequest, 'headers' | 'query' | 'body'>;
+
 const token = 'a'.repeat(48);
 const tokenHash = hashBearerToken(token);
 const productionEnv = {
@@ -14,6 +16,12 @@ const productionEnv = {
 
 const request = (authorization?: string): TestRequest => ({
   headers: authorization ? { authorization } : {}
+});
+
+const tenantRequest = (request: TenantContextRequest): TenantContextRequest => ({
+  headers: request.headers,
+  query: request.query,
+  body: request.body
 });
 
 test('development bypass is explicit', () => {
@@ -70,10 +78,10 @@ test('duplicate token hashes fail closed instead of selecting by configuration o
 
 test('tenant context is optional but, when supplied, must match the authenticated principal', () => {
   const principal = { tenantId: 'tenant-acme', subject: 'user-123', roles: ['admin'] };
-  assert.equal(tenantContextMatchesPrincipal({ headers: {} }, principal), true);
-  assert.equal(tenantContextMatchesPrincipal({ headers: { 'x-tenant-id': 'tenant-acme' } }, principal), true);
-  assert.equal(tenantContextMatchesPrincipal({ headers: { 'x-tenant-id': 'tenant-other' } }, principal), false);
-  assert.equal(tenantContextMatchesPrincipal({ headers: {}, query: { tenantId: 'tenant-other' } }, principal), false);
-  assert.equal(tenantContextMatchesPrincipal({ headers: {}, body: { tenantId: 'tenant-other' } }, principal), false);
-  assert.equal(tenantContextMatchesPrincipal({ headers: { 'x-tenant-id': 'tenant-acme' }, query: { tenantId: 'tenant-acme' }, body: { tenantId: 'tenant-acme' } }, principal), true);
+  assert.equal(tenantContextMatchesPrincipal(tenantRequest({ headers: {} }), principal), true);
+  assert.equal(tenantContextMatchesPrincipal(tenantRequest({ headers: { 'x-tenant-id': 'tenant-acme' } }), principal), true);
+  assert.equal(tenantContextMatchesPrincipal(tenantRequest({ headers: { 'x-tenant-id': 'tenant-other' } }), principal), false);
+  assert.equal(tenantContextMatchesPrincipal(tenantRequest({ headers: {}, query: { tenantId: 'tenant-other' } }), principal), false);
+  assert.equal(tenantContextMatchesPrincipal(tenantRequest({ headers: {}, body: { tenantId: 'tenant-other' } }), principal), false);
+  assert.equal(tenantContextMatchesPrincipal(tenantRequest({ headers: { 'x-tenant-id': 'tenant-acme' }, query: { tenantId: 'tenant-acme' }, body: { tenantId: 'tenant-acme' } }), principal), true);
 });
