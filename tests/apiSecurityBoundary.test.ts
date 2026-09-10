@@ -17,9 +17,9 @@ const tenantSensitiveRoutes = [
 
 test('every tenant-sensitive API route is behind the production auth guard', () => {
   for (const route of tenantSensitiveRoutes) {
-    assert.match(
-      serverSource,
-      new RegExp(`app\\.use\\(['"]${route.replaceAll('/', '\\\\/')}['"], productionAuthGuard\\)`),
+    assert.ok(
+      serverSource.includes(`app.use('${route}', productionAuthGuard)`) ||
+        serverSource.includes(`app.use("${route}", productionAuthGuard)`),
       `${route} must be registered behind productionAuthGuard`
     );
   }
