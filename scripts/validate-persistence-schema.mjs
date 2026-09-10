@@ -12,11 +12,17 @@ const required = [
   ['audit tenant foreign key', /tenant_id uuid not null references tenants\(id\)/i],
   ['evidence verification timestamp', /verified_at timestamptz/i],
   ['evidence content hash', /content_hash text/i],
+  ['tenants RLS', /alter table tenants enable row level security/i],
   ['evidence RLS', /alter table evidence_items enable row level security/i],
   ['audit RLS', /alter table audit_events enable row level security/i],
+  ['tenants isolation policy', /create policy tenants_isolation on tenants/i],
   ['evidence tenant policy', /create policy evidence_items_isolation on evidence_items/i],
   ['audit tenant policy', /create policy audit_events_isolation on audit_events/i],
   ['tenant claim binding', /current_setting\('request\.jwt\.claim\.tenant_id', true\)/i],
+  ['evidence policy tenant binding', /evidence_items_isolation[\s\S]*?using\s*\(tenant_id\s*=\s*nullif\(current_setting\('request\.jwt\.claim\.tenant_id', true\)/i],
+  ['audit policy tenant binding', /audit_events_isolation[\s\S]*?using\s*\(tenant_id\s*=\s*nullif\(current_setting\('request\.jwt\.claim\.tenant_id', true\)/i],
+  ['evidence policy write binding', /evidence_items_isolation[\s\S]*?with check\s*\(tenant_id\s*=\s*nullif\(current_setting\('request\.jwt\.claim\.tenant_id', true\)/i],
+  ['audit policy write binding', /audit_events_isolation[\s\S]*?with check\s*\(tenant_id\s*=\s*nullif\(current_setting\('request\.jwt\.claim\.tenant_id', true\)/i],
 ];
 
 for (const [name, pattern] of required) {
@@ -33,4 +39,4 @@ for (const [name, pattern] of immutableRequired) {
   if (!pattern.test(immutability)) throw new Error(`Audit immutability invariant missing: ${name}`);
 }
 
-console.log('Validated persistence schema and audit immutability invariants.');
+console.log('Validated persistence schema, tenant isolation, and audit immutability invariants.');
