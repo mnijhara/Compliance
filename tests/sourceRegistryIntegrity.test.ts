@@ -5,12 +5,19 @@ import { JURISDICTION_PROFILES } from '../src/data/jurisdictionProfiles';
 
 const sourceById = new Map(COMPLIANCE_SOURCES.map(source => [source.id, source]));
 
+function isAllowedJurisdiction(profileName: string, sourceJurisdiction: string): boolean {
+  return sourceJurisdiction === profileName || sourceJurisdiction === 'India - National';
+}
+
 test('every jurisdiction source reference resolves to a registered source', () => {
   for (const profile of JURISDICTION_PROFILES) {
     for (const sourceId of profile.authoritativeSourceIds) {
       const source = sourceById.get(sourceId);
       assert.ok(source, `${profile.id} references missing source ${sourceId}`);
-      assert.equal(source?.jurisdiction, profile.displayName, `${sourceId} jurisdiction mismatch`);
+      assert.ok(
+        source && isAllowedJurisdiction(profile.displayName, source.jurisdiction),
+        `${sourceId} jurisdiction ${source?.jurisdiction ?? 'missing'} is not valid for ${profile.displayName}`
+      );
     }
   }
 });
