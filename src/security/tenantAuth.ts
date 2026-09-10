@@ -15,6 +15,7 @@ interface ConfiguredCredential {
 
 const TENANT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const TOKEN_HASH_PATTERN = /^[a-f0-9]{64}$/;
+const MAX_BEARER_TOKEN_LENGTH = 4096;
 
 function parseCredentials(raw: string | undefined): ConfiguredCredential[] {
   if (!raw) return [];
@@ -63,20 +64,23 @@ export function resolveTenantPrincipal(
   authorization: string | undefined,
   env: NodeJS.ProcessEnv = process.env
 ): TenantPrincipal | null {
-  if (typeof authorization !== 'string' || !authorization.startsWith('Bearer ')) return null;
-  const token = authorization.slice('Bearer '.length).trim();
-  if (token.length < 32) return null;
+  if (typeof authorization !== 'string') return null;
+  const match = /^Bearer\s+(.+)$/i.exec(authorization);
+  if (!match) return null;
+
+  const token = match[1].trim();
+  if (token.length < 32 || token.length > MAX_BEARER_TOKEN_LENGTH || /\s/.test(token)) return null;
 
   const presentedHash = hashBearerToken(token);
   const credentials = parseCredentials(env.COMPLYOS_API_TOKENS_JSON);
-  const match = credentials.find((credential) => {
+  const matchCredential = credentials.find((credential) => {
     const expected = Buffer.from(credential.tokenHash, 'hex');
     const presented = Buffer.from(presentedHash, 'hex');
     return expected.length === presented.length && crypto.timingSafeEqual(expected, presented);
   });
-  if (!match) return null;
+  if (!matchCredential) return null;
 
-  return { subject: match.subject, tenantId: match.tenantId, roles: match.roles ?? [] };
+  return { subject: matchCredential.subject, tenantId: matchCredential.tenantId, roles: matchCredential.roles ?? [] };
 }
 
 export function isTenantPrincipal(value: unknown): value is TenantPrincipal {
