@@ -1,9 +1,9 @@
 import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { authorizeProductionRequest } from '../src/security/productionAuth';
+import { authorizeProductionRequest, tenantContextMatchesPrincipal } from '../src/security/productionAuth';
 import { hashBearerToken, resolveTenantPrincipal } from '../src/security/tenantAuth';
 
-type TestRequest = { headers: { authorization?: string } };
+type TestRequest = { headers: { authorization?: string; 'x-tenant-id'?: string }; query?: Record<string, unknown>; body?: Record<string, unknown> };
 
 const token = 'a'.repeat(48);
 const tokenHash = hashBearerToken(token);
@@ -66,4 +66,14 @@ test('duplicate token hashes fail closed instead of selecting by configuration o
     status: 401,
     code: 'AUTH_REQUIRED'
   });
+});
+
+test('tenant context is optional but, when supplied, must match the authenticated principal', () => {
+  const principal = { tenantId: 'tenant-acme', subject: 'user-123', roles: ['admin'] };
+  assert.equal(tenantContextMatchesPrincipal({ headers: {} }, principal), true);
+  assert.equal(tenantContextMatchesPrincipal({ headers: { 'x-tenant-id': 'tenant-acme' } }, principal), true);
+  assert.equal(tenantContextMatchesPrincipal({ headers: { 'x-tenant-id': 'tenant-other' } }, principal), false);
+  assert.equal(tenantContextMatchesPrincipal({ headers: {}, query: { tenantId: 'tenant-other' } }, principal), false);
+  assert.equal(tenantContextMatchesPrincipal({ headers: {}, body: { tenantId: 'tenant-other' } }, principal), false);
+  assert.equal(tenantContextMatchesPrincipal({ headers: { 'x-tenant-id': 'tenant-acme' }, query: { tenantId: 'tenant-acme' }, body: { tenantId: 'tenant-acme' } }, principal), true);
 });
