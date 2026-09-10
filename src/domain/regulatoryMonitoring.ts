@@ -51,7 +51,22 @@ export function evaluateRegulatorySources(
       };
     }
 
-    const ageDays = Math.max(0, Math.floor((asOfMs - verifiedAtMs) / MS_PER_DAY));
+    // A future-dated verification is not evidence of a source review. Treat it
+    // as invalid instead of clamping its age to zero and presenting it as
+    // current; this keeps the evidence-first workflow fail-closed on bad data.
+    if (verifiedAtMs > asOfMs) {
+      return {
+        sourceId: source.id,
+        status: 'INVALID',
+        verifiedAt: source.lastVerified,
+        ageDays: null,
+        maxAgeDays: safeMaxAgeDays,
+        reason: 'Verification date is later than the monitoring date.',
+        reachability: 'NOT_CHECKED'
+      };
+    }
+
+    const ageDays = Math.floor((asOfMs - verifiedAtMs) / MS_PER_DAY);
     if (ageDays > safeMaxAgeDays) {
       return {
         sourceId: source.id,
@@ -104,9 +119,6 @@ function isAllowedSourceUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'https:' || !parsed.hostname) return false;
-    // Registry URLs are destinations for a server-side request. Reject
-    // credentials and literal IP/loopback hosts so a compromised or malformed
-    // registry entry cannot turn the probe into an obvious SSRF primitive.
     if (parsed.username || parsed.password) return false;
     if (parsed.hostname === 'localhost' || parsed.hostname.endsWith('.localhost')) return false;
     if (isIP(parsed.hostname) !== 0) return false;
@@ -124,8 +136,6 @@ async function probeSource(source: ComplianceSource, fetcher: RegulatoryFetch, t
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    // Do not follow redirects. A trusted registry URL must never be allowed to
-    // redirect a server-side probe onto an arbitrary host or protocol.
     const response = await fetcher(source.url, { method: 'HEAD', redirect: 'manual', signal: controller.signal });
     if (response.ok || (response.status >= 300 && response.status < 400) || response.status === 405) {
       return { reachability: 'REACHABLE', httpStatus: response.status };
@@ -138,11 +148,6 @@ async function probeSource(source: ComplianceSource, fetcher: RegulatoryFetch, t
   }
 }
 
-/**
- * Performs network checks only against URLs already present in the trusted
- * source registry. A failed reachability check triggers REVIEW; it never
- * upgrades a control or asserts non-compliance.
- */
 export async function checkRegulatorySourceReachability(
   snapshot: RegulatoryMonitoringSnapshot,
   sources: ComplianceSource[],
