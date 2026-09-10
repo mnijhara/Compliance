@@ -71,7 +71,7 @@ app.get('/api/health', (_req, res) => {
   const persistence = getPersistenceReadiness();
   const aiProxy = aiProxyStatus();
   const status = sourceRegistryIntegrity.valid ? 'ok' : 'degraded';
-  res.json({ status, platform: 'ComplyOS Evidence-First Engine', version: '0.5.0', geminiAvailable: aiProxy.configured && aiProxy.healthySlots > 0, aiProxy, complianceEngine: 'evidence-first', persistence, sourceRegistryIntegrity, productionReadyForSystemOfRecord: persistence.durable && sourceRegistryIntegrity.valid, timestamp: now() });
+  res.json({ status, platform: 'ComplyOS Evidence-First Engine', version: '0.5.0', geminiAvailable: aiProxy.configured && aiProxy.healthy, aiProxy, complianceEngine: 'evidence-first', persistence, sourceRegistryIntegrity, productionReadyForSystemOfRecord: persistence.durable && sourceRegistryIntegrity.valid, timestamp: now() });
 });
 
 app.get('/api/regulatory-monitoring', async (req, res) => {
