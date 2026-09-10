@@ -51,11 +51,21 @@ test('valid opaque credential resolves only to the configured tenant principal',
   });
 });
 
-test('wrong, malformed, or short credentials are rejected', () => {
+test('bearer scheme is case-insensitive and surrounding whitespace is tolerated', () => {
+  assert.deepEqual(resolveTenantPrincipal(`bearer   ${token}  `, productionEnv), {
+    tenantId: 'tenant-acme',
+    subject: 'user-123',
+    roles: ['admin']
+  });
+});
+
+test('wrong, malformed, short, or oversized credentials are rejected', () => {
   assert.equal(resolveTenantPrincipal('Bearer wrong-token', productionEnv), null);
   assert.equal(resolveTenantPrincipal(undefined, productionEnv), null);
   assert.equal(resolveTenantPrincipal('Basic abc', productionEnv), null);
   assert.equal(resolveTenantPrincipal('Bearer short', productionEnv), null);
+  assert.equal(resolveTenantPrincipal(`Bearer ${'a'.repeat(4097)}`, productionEnv), null);
+  assert.equal(resolveTenantPrincipal(`Bearer ${token} extra`, productionEnv), null);
 });
 
 test('duplicate token hashes fail closed instead of selecting by configuration order', () => {
