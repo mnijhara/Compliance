@@ -20,27 +20,27 @@ export interface AuthenticatedTenantContext {
 export class TenantScopedPersistence {
   constructor(private readonly delegate: CompliancePersistence) {}
 
-  saveEvidence(context: AuthenticatedTenantContext, record: EvidenceRecord): Promise<void> {
+  async saveEvidence(context: AuthenticatedTenantContext, record: EvidenceRecord): Promise<void> {
     this.assertContext(context);
     this.assertTenantMatch(context, record.tenantId);
-    return this.delegate.saveEvidence({ ...record, tenantId: context.tenantId });
+    await this.delegate.saveEvidence({ ...record, tenantId: context.tenantId });
   }
 
-  listEvidence(context: AuthenticatedTenantContext): Promise<EvidenceRecord[]> {
+  async listEvidence(context: AuthenticatedTenantContext): Promise<EvidenceRecord[]> {
     this.assertContext(context);
     return this.delegate.listEvidence(context.tenantId);
   }
 
-  appendAudit(context: AuthenticatedTenantContext, record: AuditRecord): Promise<void> {
+  async appendAudit(context: AuthenticatedTenantContext, record: AuditRecord): Promise<void> {
     this.assertContext(context);
     this.assertTenantMatch(context, record.tenantId);
     if (record.actorId !== context.actorId) {
       throw new Error('ACTOR_CONTEXT_MISMATCH');
     }
-    return this.delegate.appendAudit({ ...record, tenantId: context.tenantId, actorId: context.actorId });
+    await this.delegate.appendAudit({ ...record, tenantId: context.tenantId, actorId: context.actorId });
   }
 
-  listAudit(context: AuthenticatedTenantContext): Promise<AuditRecord[]> {
+  async listAudit(context: AuthenticatedTenantContext): Promise<AuditRecord[]> {
     this.assertContext(context);
     return this.delegate.listAudit(context.tenantId);
   }
