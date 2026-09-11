@@ -11,6 +11,8 @@ export type TenantAccessResult =
   | { allowed: true; context: AuthenticatedTenantContext }
   | { allowed: false; code: 'AUTH_REQUIRED' | 'TENANT_MISMATCH' | 'AUTH_EXPIRED' | 'AUTH_INVALID'; reason: string };
 
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
+
 function isNonEmpty(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
@@ -39,6 +41,9 @@ export function validateTenantContext(
   const expiresAt = Date.parse(context.expiresAt);
   if (!Number.isFinite(issuedAt) || !Number.isFinite(expiresAt) || expiresAt <= issuedAt) {
     return { allowed: false, code: 'AUTH_INVALID', reason: 'Authenticated tenant context has invalid timestamps.' };
+  }
+  if (issuedAt > now.getTime() + MAX_CLOCK_SKEW_MS) {
+    return { allowed: false, code: 'AUTH_INVALID', reason: 'Authenticated tenant context is issued materially in the future.' };
   }
   if (now.getTime() >= expiresAt) return { allowed: false, code: 'AUTH_EXPIRED', reason: 'Authenticated tenant context has expired.' };
   if (context.tenantId !== requestedTenantId) return { allowed: false, code: 'TENANT_MISMATCH', reason: 'Authenticated tenant context does not match the requested tenant.' };
