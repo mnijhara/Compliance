@@ -12,11 +12,12 @@ export interface AuthenticatedTenantContext {
 /**
  * Binds persistence operations to an already-authenticated tenant context.
  *
- * The wrapped persistence provider remains responsible for durable storage and
- * database-level RLS. This boundary prevents future callers from accidentally
- * using a caller-supplied tenant ID as the authorization key.
+ * This is intentionally an authorization wrapper rather than an implementation
+ * of CompliancePersistence: its public methods require authenticated context,
+ * while the underlying delegate retains the existing persistence contract.
+ * The wrapped provider remains responsible for durable storage and database RLS.
  */
-export class TenantScopedPersistence implements CompliancePersistence {
+export class TenantScopedPersistence {
   constructor(private readonly delegate: CompliancePersistence) {}
 
   saveEvidence(context: AuthenticatedTenantContext, record: EvidenceRecord): Promise<void> {
