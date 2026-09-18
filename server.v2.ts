@@ -8,6 +8,7 @@ import { evaluateRegulatorySources, checkRegulatorySourceReachability } from './
 import { getPersistenceReadiness } from './src/domain/persistenceReadiness';
 import { validateSourceRegistry } from './src/domain/sourceRegistry';
 import { createRateLimiter, isNonEmptyString, MAX_DOCUMENT_CHARS, MAX_MESSAGE_CHARS, MAX_POLICY_FIELD_CHARS } from './src/security/inputGuards';
+import { getSecurityHeaders } from './src/security/securityHeaders';
 import { createProductionAuthGuard } from './src/security/productionAuth';
 import { generate as generateAI, publicStatus as aiProxyStatus } from './src/aiRouter';
 
@@ -25,17 +26,9 @@ app.use('/api', (req, res, next) => {
   next();
 });
 app.use((_req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  const headers = getSecurityHeaders({ path: _req.path, production: process.env.NODE_ENV === 'production' });
+  for (const [name, value] of Object.entries(headers)) res.setHeader(name, value);
   res.setHeader('X-Request-Id', randomUUID());
-  if (process.env.NODE_ENV === 'production') {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  }
-  if (_req.path.startsWith('/api/')) {
-    res.setHeader('Cache-Control', 'no-store');
-  }
   next();
 });
 
