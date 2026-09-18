@@ -138,7 +138,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
   }
 ];
 
-export const COMPLIANCE_SOURCE_VERSION = '2026-09-18';
+export const COMPLIANCE_SOURCE_VERSION = '2026-09-06';
 
 export function isSourceFresh(source: ComplianceSource, asOf = COMPLIANCE_SOURCE_VERSION): boolean {
   const verifiedAt = Date.parse(source.lastVerified);
