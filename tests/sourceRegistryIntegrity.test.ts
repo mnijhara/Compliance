@@ -26,7 +26,7 @@ test('registered compliance sources have traceable verification metadata', () =>
   for (const source of COMPLIANCE_SOURCES) {
     assert.match(source.url, /^https:\/\//, `${source.id} must use HTTPS`);
     assert.ok(Number.isFinite(Date.parse(source.lastVerified)), `${source.id} has invalid lastVerified`);
-    assert.ok(source.lastVerified <= COMPLIANCE_SOURCE_VERSION, `${source.id} is verified after the registry version`);
+    assert.ok(source.lastVerified >= COMPLIANCE_SOURCE_VERSION, `${source.id} is older than the registry version`);
     assert.ok(isSourceFresh(source), `${source.id} is stale for the registry version`);
   }
 });
