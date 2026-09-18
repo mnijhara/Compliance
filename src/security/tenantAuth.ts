@@ -15,6 +15,7 @@ interface ConfiguredCredential {
 
 const TENANT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const TOKEN_HASH_PATTERN = /^[a-f0-9]{64}$/;
+const SAFE_METADATA_PATTERN = /^[\x21-\x7E]+$/;
 const MAX_BEARER_TOKEN_LENGTH = 4096;
 
 function parseCredentials(raw: string | undefined): ConfiguredCredential[] {
@@ -33,10 +34,10 @@ function parseCredentials(raw: string | undefined): ConfiguredCredential[] {
     if (
       typeof candidate.tokenHash !== 'string' || !TOKEN_HASH_PATTERN.test(candidate.tokenHash) ||
       typeof candidate.tenantId !== 'string' || !TENANT_ID_PATTERN.test(candidate.tenantId) ||
-      typeof candidate.subject !== 'string' || candidate.subject.length === 0 || candidate.subject.length > 128
+      typeof candidate.subject !== 'string' || candidate.subject.length === 0 || candidate.subject.length > 128 || !SAFE_METADATA_PATTERN.test(candidate.subject)
     ) return [];
     const roles = Array.isArray(candidate.roles)
-      ? candidate.roles.filter((role): role is string => typeof role === 'string' && role.length > 0 && role.length <= 64).slice(0, 20)
+      ? candidate.roles.filter((role): role is string => typeof role === 'string' && role.length > 0 && role.length <= 64 && SAFE_METADATA_PATTERN.test(role)).slice(0, 20)
       : [];
     return [{ tokenHash: candidate.tokenHash, tenantId: candidate.tenantId, subject: candidate.subject, roles }];
   });
@@ -86,7 +87,7 @@ export function resolveTenantPrincipal(
 export function isTenantPrincipal(value: unknown): value is TenantPrincipal {
   if (!value || typeof value !== 'object') return false;
   const principal = value as Partial<TenantPrincipal>;
-  return typeof principal.subject === 'string' && principal.subject.length > 0 &&
+  return typeof principal.subject === 'string' && principal.subject.length > 0 && principal.subject.length <= 128 && SAFE_METADATA_PATTERN.test(principal.subject) &&
     typeof principal.tenantId === 'string' && TENANT_ID_PATTERN.test(principal.tenantId) &&
-    Array.isArray(principal.roles) && principal.roles.every(role => typeof role === 'string');
+    Array.isArray(principal.roles) && principal.roles.length <= 20 && principal.roles.every(role => typeof role === 'string' && role.length > 0 && role.length <= 64 && SAFE_METADATA_PATTERN.test(role));
 }
