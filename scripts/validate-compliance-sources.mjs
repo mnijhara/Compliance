@@ -31,8 +31,11 @@ for (const [, id, body] of sourceBlocks) {
 
   const verifiedAt = Date.parse(verified[1]);
   if (!Number.isFinite(verifiedAt)) throw new Error(`Invalid lastVerified for ${id}: ${verified[1]}`);
-  if (verifiedAt > registryVersion) {
-    throw new Error(`Source ${id} is verified after registry version ${versionMatch[1]}`);
+  // COMPLIANCE_SOURCE_VERSION is an as-of floor: a source verified after the
+  // snapshot is newer and therefore valid. A stale verification predating the
+  // snapshot is what must fail the registry integrity gate.
+  if (verifiedAt < registryVersion) {
+    throw new Error(`Source ${id} is verified before registry version ${versionMatch[1]}`);
   }
 }
 
