@@ -30,6 +30,12 @@ app.use((_req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.setHeader('X-Request-Id', randomUUID());
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  if (_req.path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store');
+  }
   next();
 });
 
