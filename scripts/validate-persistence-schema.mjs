@@ -44,8 +44,8 @@ for (const [name, pattern] of immutableRequired) {
 
 const evidenceIntegrityRequired = [
   ['evidence integrity function', /create or replace function validate_evidence_item_integrity\(\)/i],
-  ['SHA-256 hash validation', /content_hash is not null[\s\S]*\^\[0-9a-fA-F\]\{64\}\$/i],
-  ['future verification guard', /verified_at is not null[\s\S]*verified_at > now\(\) \+ interval '5 minutes'/i],
+  ['SHA-256 hash validation', /new\.content_hash is not null[\s\S]*\^\[0-9a-fA-F\]\{64\}\$/i],
+  ['future verification guard', /new\.verified_at is not null[\s\S]*new\.verified_at > now\(\) \+ interval '5 minutes'/i],
   ['non-empty evidence title guard', /btrim\(new\.title\) = ''/i],
   ['evidence integrity trigger', /create trigger evidence_items_integrity/i],
 ];
