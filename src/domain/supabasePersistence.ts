@@ -1,0 +1,137 @@
+import { assertAuditRecord, assertEvidenceRecord, assertTenantId } from './persistenceGuards';
+import type { AuditRecord, CompliancePersistence, EvidenceRecord } from './persistence';
+
+export interface SupabasePersistenceConfig {
+  url: string;
+  anonKey: string;
+  /** Returns the caller's short-lived access token for the authenticated tenant. */
+  accessToken: (tenantId: string) => Promise<string> | string;
+  fetchImpl?: typeof fetch;
+}
+
+type SupabaseEvidenceRow = {
+  id: string;
+  tenant_id: string;
+  kind: string;
+  title: string;
+  status: string;
+  collected_at: string;
+  expires_at?: string | null;
+  source_id?: string | null;
+  source_url?: string | null;
+  authority?: string | null;
+  verified_at?: string | null;
+  content_hash?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+type SupabaseAuditRow = {
+  id: string;
+  tenant_id: string;
+  actor_id: string;
+  action: string;
+  created_at: string;
+  payload?: Record<string, unknown> | null;
+};
+
+/**
+ * Durable adapter for Supabase/PostgREST.
+ *
+ * It deliberately requires a caller-provided access token. A service-role key
+ * is never accepted, cached, or used here, so database RLS remains the final
+ * tenant-isolation boundary. The token must contain the tenant_id claim used by
+ * the database RPCs.
+ */
+export class SupabaseCompliancePersistence implements CompliancePersistence {
+  private readonly baseUrl: string;
+  private readonly anonKey: string;
+  private readonly accessToken: SupabasePersistenceConfig['accessToken'];
+  private readonly fetchImpl: typeof fetch;
+
+  constructor(config: SupabasePersistenceConfig) {
+    if (!/^https:\/\/[^\s/]+(?:\/.*)?$/i.test(config.url)) throw new Error('SUPABASE_URL_INVALID');
+    if (!config.anonKey.trim()) throw new Error('SUPABASE_ANON_KEY_REQUIRED');
+    this.baseUrl = config.url.replace(/\/$/, '');
+    this.anonKey = config.anonKey;
+    this.accessToken = config.accessToken;
+    this.fetchImpl = config.fetchImpl ?? fetch;
+  }
+
+  async saveEvidence(record: EvidenceRecord): Promise<void> {
+    assertEvidenceRecord(record);
+    await this.rpc('complyos_save_evidence', record.tenantId, { p_record: {
+      id: record.id,
+      tenantId: record.tenantId,
+      kind: record.kind,
+      title: record.title,
+      status: record.status,
+      collectedAt: record.collectedAt,
+      expiresAt: record.expiresAt ?? null,
+      metadata: record.metadata ?? {},
+    } });
+  }
+
+  async listEvidence(tenantId: string): Promise<EvidenceRecord[]> {
+    assertTenantId(tenantId);
+    const rows = await this.rpc<SupabaseEvidenceRow[]>('complyos_list_evidence', tenantId, {});
+    return rows.map(row => ({
+      id: row.id,
+      tenantId: row.tenant_id,
+      kind: row.kind,
+      title: row.title,
+      status: row.status,
+      collectedAt: row.collected_at,
+      ...(row.expires_at ? { expiresAt: row.expires_at } : {}),
+      metadata: row.metadata ?? {},
+    }));
+  }
+
+  async appendAudit(record: AuditRecord): Promise<void> {
+    assertAuditRecord(record);
+    await this.rpc('complyos_append_audit', record.tenantId, { p_record: {
+      id: record.id,
+      tenantId: record.tenantId,
+      actorId: record.actorId,
+      action: record.action,
+      occurredAt: record.occurredAt,
+      payload: record.payload,
+    } });
+  }
+
+  async listAudit(tenantId: string): Promise<AuditRecord[]> {
+    assertTenantId(tenantId);
+    const rows = await this.rpc<SupabaseAuditRow[]>('complyos_list_audit', tenantId, {});
+    return rows.map(row => ({
+      id: row.id,
+      tenantId: row.tenant_id,
+      action: row.action,
+      actorId: row.actor_id,
+      occurredAt: row.created_at,
+      payload: row.payload ?? {},
+    }));
+  }
+
+  private async rpc<T = unknown>(name: string, tenantId: string, body: Record<string, unknown>): Promise<T> {
+    const token = await this.accessToken(tenantId);
+    if (!token || token.length > 8192) throw new Error('AUTH_TOKEN_INVALID');
+
+    const response = await this.fetchImpl(`${this.baseUrl}/rest/v1/rpc/${name}`, {
+      method: 'POST',
+      headers: {
+        apikey: this.anonKey,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 500);
+      throw new Error(`PERSISTENCE_RPC_FAILED:${response.status}:${detail}`);
+    }
+
+    const text = await response.text();
+    return (text ? JSON.parse(text) : undefined) as T;
+  }
+}
