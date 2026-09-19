@@ -7,6 +7,7 @@ create or replace function complyos_set_tenant_claim()
 returns void
 language plpgsql
 security invoker
+volatile
 as $$
 declare
   claims jsonb;
@@ -27,7 +28,7 @@ create or replace function complyos_list_evidence()
 returns setof evidence_items
 language plpgsql
 security invoker
-stable
+volatile
 as $$
 begin
   perform complyos_set_tenant_claim();
@@ -45,17 +46,15 @@ as $$
 begin
   perform complyos_set_tenant_claim();
   insert into evidence_items (
-    id, tenant_id, source_id, title, source_url, authority,
-    verified_at, content_hash, metadata
+    id, tenant_id, kind, title, status, collected_at, expires_at, metadata
   ) values (
     (p_record->>'id')::uuid,
     (p_record->>'tenantId')::uuid,
-    p_record->>'sourceId',
+    p_record->>'kind',
     p_record->>'title',
-    p_record->>'sourceUrl',
-    p_record->>'authority',
-    nullif(p_record->>'verifiedAt', '')::timestamptz,
-    nullif(p_record->>'contentHash', ''),
+    p_record->>'status',
+    (p_record->>'collectedAt')::timestamptz,
+    nullif(p_record->>'expiresAt', '')::timestamptz,
     coalesce(p_record->'metadata', '{}'::jsonb)
   );
 end;
@@ -65,7 +64,7 @@ create or replace function complyos_list_audit()
 returns setof audit_events
 language plpgsql
 security invoker
-stable
+volatile
 as $$
 begin
   perform complyos_set_tenant_claim();
@@ -84,7 +83,7 @@ begin
   perform complyos_set_tenant_claim();
   insert into audit_events (
     id, tenant_id, actor_id, action, entity_type, entity_id,
-    evidence_ids, payload
+    evidence_ids, payload, created_at
   ) values (
     (p_record->>'id')::uuid,
     (p_record->>'tenantId')::uuid,
@@ -99,7 +98,8 @@ begin
       ),
       '{}'::uuid[]
     ),
-    coalesce(p_record->'payload', '{}'::jsonb)
+    coalesce(p_record->'payload', '{}'::jsonb),
+    coalesce((p_record->>'occurredAt')::timestamptz, now())
   );
 end;
 $$;
