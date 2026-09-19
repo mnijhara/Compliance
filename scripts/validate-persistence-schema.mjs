@@ -19,10 +19,11 @@ const required = [
   ['evidence tenant policy', /create policy evidence_items_isolation on evidence_items/i],
   ['audit tenant policy', /create policy audit_events_isolation on audit_events/i],
   ['tenant claim binding', /current_setting\('request\.jwt\.claim\.tenant_id', true\)/i],
-  ['evidence policy tenant binding', /evidence_items_isolation[\s\S]*?using\s*\(tenant_id\s*=\s*nullif\(current_setting\('request\.jwt\.claim\.tenant_id', true\)/i],
-  ['audit policy tenant binding', /audit_events_isolation[\s\S]*?using\s*\(tenant_id\s*=\s*nullif\(current_setting\('request\.jwt\.claim\.tenant_id', true\)/i],
-  ['evidence policy write binding', /evidence_items_isolation[\s\S]*?with check\s*\(tenant_id\s*=\s*nullif\(current_setting\('request\.jwt\.claim\.tenant_id', true\)/i],
-  ['audit policy write binding', /audit_events_isolation[\s\S]*?with check\s*\(tenant_id\s*=\s*nullif\(current_setting\('request\.jwt\.claim\.tenant_id', true\)/i],
+  ['tenant claim UUID guard', /~\*\s*'\^\[0-9a-f\]\{8\}-\[0-9a-f\]\{4\}-\[0-9a-f\]\{4\}-\[0-9a-f\]\{4\}-\[0-9a-f\]\{12\}\$'/i],
+  ['evidence policy read binding', /evidence_items_isolation[\s\S]*?using\s*\(tenant_id\s*=\s*case\s+when[\s\S]*?current_setting\('request\.jwt\.claim\.tenant_id', true\)::uuid[\s\S]*?end\)/i],
+  ['audit policy read binding', /audit_events_isolation[\s\S]*?using\s*\(tenant_id\s*=\s*case\s+when[\s\S]*?current_setting\('request\.jwt\.claim\.tenant_id', true\)::uuid[\s\S]*?end\)/i],
+  ['evidence policy write binding', /evidence_items_isolation[\s\S]*?with check\s*\(tenant_id\s*=\s*case\s+when[\s\S]*?current_setting\('request\.jwt\.claim\.tenant_id', true\)::uuid[\s\S]*?end\)/i],
+  ['audit policy write binding', /audit_events_isolation[\s\S]*?with check\s*\(tenant_id\s*=\s*case\s+when[\s\S]*?current_setting\('request\.jwt\.claim\.tenant_id', true\)::uuid[\s\S]*?end\)/i],
 ];
 
 for (const [name, pattern] of required) {
