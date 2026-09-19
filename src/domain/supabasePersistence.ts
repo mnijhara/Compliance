@@ -1,6 +1,8 @@
 import { assertAuditRecord, assertEvidenceRecord, assertTenantId } from './persistenceGuards';
 import type { AuditRecord, CompliancePersistence, EvidenceRecord } from './persistence';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export interface SupabasePersistenceConfig {
   url: string;
   anonKey: string;
@@ -17,11 +19,6 @@ type SupabaseEvidenceRow = {
   status: string;
   collected_at: string;
   expires_at?: string | null;
-  source_id?: string | null;
-  source_url?: string | null;
-  authority?: string | null;
-  verified_at?: string | null;
-  content_hash?: string | null;
   metadata?: Record<string, unknown> | null;
 };
 
@@ -59,6 +56,8 @@ export class SupabaseCompliancePersistence implements CompliancePersistence {
 
   async saveEvidence(record: EvidenceRecord): Promise<void> {
     assertEvidenceRecord(record);
+    this.assertUuid(record.tenantId, 'tenant');
+    this.assertUuid(record.id, 'evidence');
     await this.rpc('complyos_save_evidence', record.tenantId, { p_record: {
       id: record.id,
       tenantId: record.tenantId,
@@ -73,21 +72,29 @@ export class SupabaseCompliancePersistence implements CompliancePersistence {
 
   async listEvidence(tenantId: string): Promise<EvidenceRecord[]> {
     assertTenantId(tenantId);
+    this.assertUuid(tenantId, 'tenant');
     const rows = await this.rpc<SupabaseEvidenceRow[]>('complyos_list_evidence', tenantId, {});
-    return rows.map(row => ({
-      id: row.id,
-      tenantId: row.tenant_id,
-      kind: row.kind,
-      title: row.title,
-      status: row.status,
-      collectedAt: row.collected_at,
-      ...(row.expires_at ? { expiresAt: row.expires_at } : {}),
-      metadata: row.metadata ?? {},
-    }));
+    return rows.map(row => {
+      this.assertUuid(row.tenant_id, 'returned tenant');
+      if (row.tenant_id !== tenantId) throw new Error('TENANT_CONTEXT_MISMATCH');
+      this.assertUuid(row.id, 'returned evidence');
+      return {
+        id: row.id,
+        tenantId: row.tenant_id,
+        kind: row.kind,
+        title: row.title,
+        status: row.status,
+        collectedAt: row.collected_at,
+        ...(row.expires_at ? { expiresAt: row.expires_at } : {}),
+        metadata: row.metadata ?? {},
+      };
+    });
   }
 
   async appendAudit(record: AuditRecord): Promise<void> {
     assertAuditRecord(record);
+    this.assertUuid(record.tenantId, 'tenant');
+    this.assertUuid(record.id, 'audit');
     await this.rpc('complyos_append_audit', record.tenantId, { p_record: {
       id: record.id,
       tenantId: record.tenantId,
@@ -100,15 +107,25 @@ export class SupabaseCompliancePersistence implements CompliancePersistence {
 
   async listAudit(tenantId: string): Promise<AuditRecord[]> {
     assertTenantId(tenantId);
+    this.assertUuid(tenantId, 'tenant');
     const rows = await this.rpc<SupabaseAuditRow[]>('complyos_list_audit', tenantId, {});
-    return rows.map(row => ({
-      id: row.id,
-      tenantId: row.tenant_id,
-      action: row.action,
-      actorId: row.actor_id,
-      occurredAt: row.created_at,
-      payload: row.payload ?? {},
-    }));
+    return rows.map(row => {
+      this.assertUuid(row.tenant_id, 'returned tenant');
+      if (row.tenant_id !== tenantId) throw new Error('TENANT_CONTEXT_MISMATCH');
+      this.assertUuid(row.id, 'returned audit');
+      return {
+        id: row.id,
+        tenantId: row.tenant_id,
+        action: row.action,
+        actorId: row.actor_id,
+        occurredAt: row.created_at,
+        payload: row.payload ?? {},
+      };
+    });
+  }
+
+  private assertUuid(value: string, label: string): void {
+    if (!UUID_PATTERN.test(value)) throw new Error(`${label} identifier must be a UUID`);
   }
 
   private async rpc<T = unknown>(name: string, tenantId: string, body: Record<string, unknown>): Promise<T> {
