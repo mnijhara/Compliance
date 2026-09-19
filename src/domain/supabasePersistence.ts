@@ -144,11 +144,17 @@ export class SupabaseCompliancePersistence implements CompliancePersistence {
     });
 
     if (!response.ok) {
-      const detail = (await response.text()).slice(0, 500);
-      throw new Error(`PERSISTENCE_RPC_FAILED:${response.status}:${detail}`);
+      // Never surface PostgREST/Supabase response bodies to callers. They can
+      // contain SQL, policy, schema, or provider details that are not part of
+      // the public application error contract.
+      throw new Error(`PERSISTENCE_RPC_FAILED:${response.status}`);
     }
 
     const text = await response.text();
-    return (text ? JSON.parse(text) : undefined) as T;
+    try {
+      return (text ? JSON.parse(text) : undefined) as T;
+    } catch {
+      throw new Error('PERSISTENCE_RPC_INVALID_RESPONSE');
+    }
   }
 }
