@@ -27,6 +27,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Validate persistence schema invariants
         run: npm run test:persistence-schema
+      - name: Validate audit actor identity binding
+        run: node scripts/validate-audit-actor-binding.mjs
       - name: Typecheck
         run: npm run lint
       - name: Unit tests
