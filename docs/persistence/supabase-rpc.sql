@@ -1,7 +1,7 @@
 -- Tenant-scoped application RPCs for Supabase/PostgREST.
--- These functions derive the tenant from the caller's JWT, then set the
--- transaction-local claim consumed by the existing RLS policies. They are
--- SECURITY INVOKER so RLS remains the final authorization boundary.
+-- These functions derive the tenant and actor identity from the caller's JWT,
+-- then set the transaction-local claim consumed by the existing RLS policies.
+-- They are SECURITY INVOKER so RLS remains the final authorization boundary.
 
 create or replace function complyos_set_tenant_claim()
 returns void
@@ -103,11 +103,19 @@ security invoker
 volatile
 as $$
 declare
+  claims jsonb;
   jwt_tenant uuid;
+  jwt_actor text;
   record_tenant uuid;
 begin
   perform complyos_set_tenant_claim();
   jwt_tenant := current_setting('request.jwt.claim.tenant_id', true)::uuid;
+  claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+  jwt_actor := nullif(trim(claims ->> 'sub'), '');
+
+  if jwt_actor is null then
+    raise exception 'AUTH_ACTOR_CLAIM_INVALID';
+  end if;
 
   begin
     record_tenant := (p_record->>'tenantId')::uuid;
@@ -120,7 +128,6 @@ begin
   end if;
 
   if nullif(trim(p_record->>'id'), '') is null
-     or nullif(trim(p_record->>'actorId'), '') is null
      or nullif(trim(p_record->>'action'), '') is null then
     raise exception 'AUDIT_RECORD_INVALID';
   end if;
@@ -131,7 +138,7 @@ begin
   ) values (
     (p_record->>'id')::uuid,
     record_tenant,
-    trim(p_record->>'actorId'),
+    jwt_actor,
     trim(p_record->>'action'),
     coalesce(nullif(trim(p_record->>'entityType'), ''), 'UNKNOWN'),
     nullif(p_record->>'entityId', '')::uuid,
@@ -150,4 +157,4 @@ $$;
 
 comment on function complyos_set_tenant_claim() is 'Derives and validates tenant_id from the authenticated JWT for RLS.';
 comment on function complyos_save_evidence(jsonb) is 'Tenant-scoped evidence insert; rejects caller tenant mismatch before RLS.';
-comment on function complyos_append_audit(jsonb) is 'Tenant-scoped append-only audit insert; rejects caller tenant mismatch before RLS.';
+comment on function complyos_append_audit(jsonb) is 'Tenant-scoped append-only audit insert; actor_id is derived from the authenticated JWT sub claim.';
