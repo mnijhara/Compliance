@@ -3,15 +3,20 @@ import { readFile } from 'node:fs/promises';
 const schemaPath = new URL('../docs/persistence/evidence-audit-schema.sql', import.meta.url);
 const immutabilityPath = new URL('../docs/persistence/audit-immutability.sql', import.meta.url);
 const evidenceIntegrityPath = new URL('../docs/persistence/evidence-integrity.sql', import.meta.url);
+const rpcPath = new URL('../docs/persistence/supabase-rpc.sql', import.meta.url);
 const schema = await readFile(schemaPath, 'utf8');
 const immutability = await readFile(immutabilityPath, 'utf8');
 const evidenceIntegrity = await readFile(evidenceIntegrityPath, 'utf8');
+const rpc = await readFile(rpcPath, 'utf8');
 
 const required = [
   ['tenants table', /create table if not exists tenants\s*\(/i],
   ['tenant UUID primary key', /id uuid primary key/i],
   ['evidence tenant foreign key', /tenant_id uuid not null references tenants\(id\)/i],
   ['audit tenant foreign key', /tenant_id uuid not null references tenants\(id\)/i],
+  ['evidence kind', /kind text not null default 'DOCUMENT'/i],
+  ['evidence status', /status text not null default 'REVIEW'/i],
+  ['evidence collection timestamp', /collected_at timestamptz not null/i],
   ['evidence verification timestamp', /verified_at timestamptz/i],
   ['evidence content hash', /content_hash text/i],
   ['tenants RLS', /alter table tenants enable row level security/i],
@@ -54,4 +59,21 @@ for (const [name, pattern] of evidenceIntegrityRequired) {
   if (!pattern.test(evidenceIntegrity)) throw new Error(`Evidence integrity invariant missing: ${name}`);
 }
 
-console.log('Validated persistence schema, tenant isolation, audit immutability, and evidence integrity invariants.');
+const rpcRequired = [
+  ['JWT tenant claim extraction', /tenant_claim := claims ->> 'tenant_id'/i],
+  ['transaction-local tenant binding', /set_config\('request\.jwt\.claim\.tenant_id', tenant_claim, true\)/i],
+  ['invalid tenant claim rejection', /raise exception 'AUTH_TENANT_CLAIM_INVALID'/i],
+  ['evidence list RPC', /create or replace function complyos_list_evidence\(\)/i],
+  ['evidence write RPC', /create or replace function complyos_save_evidence\(p_record jsonb\)/i],
+  ['audit list RPC', /create or replace function complyos_list_audit\(\)/i],
+  ['audit write RPC', /create or replace function complyos_append_audit\(p_record jsonb\)/i],
+  ['RPC security invoker', /security invoker/i],
+  ['evidence RPC RLS path', /complyos_save_evidence[\s\S]*?insert into evidence_items/i],
+  ['audit RPC RLS path', /complyos_append_audit[\s\S]*?insert into audit_events/i],
+];
+
+for (const [name, pattern] of rpcRequired) {
+  if (!pattern.test(rpc)) throw new Error(`Persistence RPC invariant missing: ${name}`);
+}
+
+console.log('Validated persistence schema, tenant isolation, audit immutability, evidence integrity, and Supabase RPC invariants.');
