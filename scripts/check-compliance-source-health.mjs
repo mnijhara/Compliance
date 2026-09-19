@@ -6,6 +6,7 @@ const maxAgeDays = Number.parseInt(process.env.MAX_SOURCE_AGE_DAYS ?? '30', 10);
 const timeoutMs = Number.parseInt(process.env.SOURCE_TIMEOUT_MS ?? '10000', 10);
 const retries = Number.parseInt(process.env.SOURCE_PROBE_RETRIES ?? '2', 10);
 const strictReachability = process.env.STRICT_SOURCE_REACHABILITY === 'true';
+const strictAuthority = process.env.STRICT_SOURCE_AUTHORITY === 'true';
 
 if (!Number.isFinite(maxAgeDays) || maxAgeDays < 0) {
   throw new Error('MAX_SOURCE_AGE_DAYS must be a non-negative integer');
@@ -25,6 +26,16 @@ const now = new Date();
 const cutoff = now.getTime() - maxAgeDays * 24 * 60 * 60 * 1000;
 const results = [];
 
+function sameAuthorityHost(sourceUrl, finalUrl) {
+  try {
+    const sourceHost = new URL(sourceUrl).hostname.toLowerCase();
+    const finalHost = new URL(finalUrl).hostname.toLowerCase();
+    return sourceHost === finalHost;
+  } catch {
+    return false;
+  }
+}
+
 async function request(url, method) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -33,7 +44,7 @@ async function request(url, method) {
       method,
       redirect: 'follow',
       signal: controller.signal,
-      headers: { 'user-agent': 'ComplyOS-source-health/1.1' },
+      headers: { 'user-agent': 'ComplyOS-source-health/1.2' },
     });
   } finally {
     clearTimeout(timer);
@@ -58,6 +69,7 @@ async function probe(url) {
         ok: response.ok,
         status: response.status,
         finalUrl: response.url,
+        authorityPreserved: response.url ? sameAuthorityHost(url, response.url) : false,
         attempts: attempt + 1,
       };
 
@@ -93,6 +105,7 @@ for (const [, id, body] of sourceBlocks) {
       ok: false,
       status: null,
       attempts: retries + 1,
+      authorityPreserved: false,
       error: error instanceof Error ? error.message : String(error),
     };
   }
@@ -103,6 +116,7 @@ for (const [, id, body] of sourceBlocks) {
     lastVerified,
     fresh,
     reachable: probeResult.ok,
+    authorityPreserved: probeResult.authorityPreserved ?? false,
     httpStatus: probeResult.status ?? null,
     finalUrl: probeResult.finalUrl ?? null,
     attempts: probeResult.attempts ?? retries + 1,
@@ -114,6 +128,7 @@ const report = {
   checkedAt: now.toISOString(),
   maxAgeDays,
   strictReachability,
+  strictAuthority,
   sourceCount: results.length,
   sources: results,
 };
@@ -121,9 +136,10 @@ await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 
 const stale = results.filter((source) => !source.fresh);
 const unavailable = results.filter((source) => !source.reachable);
-console.log(JSON.stringify({ checkedAt: report.checkedAt, sourceCount: report.sourceCount, stale: stale.map((s) => s.id), unavailable: unavailable.map((s) => s.id) }, null, 2));
+const authorityDrift = results.filter((source) => source.reachable && !source.authorityPreserved);
+console.log(JSON.stringify({ checkedAt: report.checkedAt, sourceCount: report.sourceCount, stale: stale.map((s) => s.id), unavailable: unavailable.map((s) => s.id), authorityDrift: authorityDrift.map((s) => ({ id: s.id, finalUrl: s.finalUrl })) }, null, 2));
 
-if (stale.length || (strictReachability && unavailable.length)) {
-  console.error(`Compliance source health check failed: ${stale.length} stale, ${strictReachability ? unavailable.length : 0} unavailable.`);
+if (stale.length || (strictReachability && unavailable.length) || (strictAuthority && authorityDrift.length)) {
+  console.error(`Compliance source health check failed: ${stale.length} stale, ${strictReachability ? unavailable.length : 0} unavailable, ${strictAuthority ? authorityDrift.length : 0} authority-drifted.`);
   process.exitCode = 1;
 }

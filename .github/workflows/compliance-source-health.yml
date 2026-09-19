@@ -33,6 +33,7 @@ jobs:
           SOURCE_TIMEOUT_MS: 10000
           SOURCE_PROBE_RETRIES: 2
           STRICT_SOURCE_REACHABILITY: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+          STRICT_SOURCE_AUTHORITY: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
       - name: Upload health report
         if: always()
         uses: actions/upload-artifact@v4
