@@ -2,8 +2,10 @@ import { readFile } from 'node:fs/promises';
 
 const schemaPath = new URL('../docs/persistence/evidence-audit-schema.sql', import.meta.url);
 const immutabilityPath = new URL('../docs/persistence/audit-immutability.sql', import.meta.url);
+const evidenceIntegrityPath = new URL('../docs/persistence/evidence-integrity.sql', import.meta.url);
 const schema = await readFile(schemaPath, 'utf8');
 const immutability = await readFile(immutabilityPath, 'utf8');
+const evidenceIntegrity = await readFile(evidenceIntegrityPath, 'utf8');
 
 const required = [
   ['tenants table', /create table if not exists tenants\s*\(/i],
@@ -40,4 +42,16 @@ for (const [name, pattern] of immutableRequired) {
   if (!pattern.test(immutability)) throw new Error(`Audit immutability invariant missing: ${name}`);
 }
 
-console.log('Validated persistence schema, tenant isolation, and audit immutability invariants.');
+const evidenceIntegrityRequired = [
+  ['evidence integrity function', /create or replace function validate_evidence_item_integrity\(\)/i],
+  ['SHA-256 hash validation', /content_hash is not null[\s\S]*\^\[0-9a-fA-F\]\{64\}\$/i],
+  ['future verification guard', /verified_at is not null[\s\S]*verified_at > now\(\) \+ interval '5 minutes'/i],
+  ['non-empty evidence title guard', /btrim\(new\.title\) = ''/i],
+  ['evidence integrity trigger', /create trigger evidence_items_integrity/i],
+];
+
+for (const [name, pattern] of evidenceIntegrityRequired) {
+  if (!pattern.test(evidenceIntegrity)) throw new Error(`Evidence integrity invariant missing: ${name}`);
+}
+
+console.log('Validated persistence schema, tenant isolation, audit immutability, and evidence integrity invariants.');
