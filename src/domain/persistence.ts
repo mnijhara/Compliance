@@ -38,6 +38,20 @@ export class PersistenceNotConfiguredError extends Error {
 }
 
 /**
+ * Signals a duplicate record id. Durable PostgreSQL storage enforces the same
+ * invariant through primary keys; the development adapter mirrors it so retry
+ * and idempotency behavior cannot diverge between test and production.
+ */
+export class PersistenceConflictError extends Error {
+  readonly code = 'PERSISTENCE_CONFLICT';
+
+  constructor(recordType: 'evidence' | 'audit', id: string) {
+    super(`A ${recordType} record with id ${id} already exists.`);
+    this.name = 'PersistenceConflictError';
+  }
+}
+
+/**
  * Process-local adapter for development/tests only. It deliberately does not
  * claim durability and must never be used as a compliance system of record.
  */
@@ -48,6 +62,9 @@ export class MemoryCompliancePersistence implements CompliancePersistence {
   async saveEvidence(record: EvidenceRecord): Promise<void> {
     assertEvidenceRecord(record);
     const records = this.evidence.get(record.tenantId) ?? [];
+    if (records.some(existing => existing.id === record.id)) {
+      throw new PersistenceConflictError('evidence', record.id);
+    }
     records.push({ ...record, metadata: record.metadata ? { ...record.metadata } : undefined });
     this.evidence.set(record.tenantId, records);
   }
@@ -60,6 +77,9 @@ export class MemoryCompliancePersistence implements CompliancePersistence {
   async appendAudit(record: AuditRecord): Promise<void> {
     assertAuditRecord(record);
     const records = this.audit.get(record.tenantId) ?? [];
+    if (records.some(existing => existing.id === record.id)) {
+      throw new PersistenceConflictError('audit', record.id);
+    }
     records.push({ ...record, payload: { ...record.payload } });
     this.audit.set(record.tenantId, records);
   }

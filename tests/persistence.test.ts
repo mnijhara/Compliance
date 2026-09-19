@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MemoryCompliancePersistence, PersistenceNotConfiguredError, createPersistence } from '../src/domain/persistence';
+import { MemoryCompliancePersistence, PersistenceConflictError, PersistenceNotConfiguredError, createPersistence } from '../src/domain/persistence';
 
 test('memory persistence isolates records by tenant', async () => {
   const store = new MemoryCompliancePersistence();
@@ -12,6 +12,18 @@ test('memory persistence isolates records by tenant', async () => {
   assert.deepEqual((await store.listEvidence('tenant-b')).map(item => item.id), ['e2']);
   assert.deepEqual((await store.listAudit('tenant-a')).map(item => item.id), ['a1']);
   assert.deepEqual(await store.listAudit('tenant-b'), []);
+});
+
+test('memory persistence rejects duplicate evidence and audit ids', async () => {
+  const store = new MemoryCompliancePersistence();
+  const evidence = { id: 'e1', tenantId: 'tenant-a', kind: 'DOCUMENT', title: 'Policy', status: 'ACCEPTED', collectedAt: '2026-09-05T00:00:00.000Z' };
+  const audit = { id: 'a1', tenantId: 'tenant-a', action: 'EVIDENCE_ACCEPTED', actorId: 'user-a', occurredAt: '2026-09-05T00:00:00.000Z', payload: { evidenceId: 'e1' } };
+
+  await store.saveEvidence(evidence);
+  await assert.rejects(() => store.saveEvidence(evidence), (error: unknown) => error instanceof PersistenceConflictError && error.code === 'PERSISTENCE_CONFLICT');
+
+  await store.appendAudit(audit);
+  await assert.rejects(() => store.appendAudit(audit), (error: unknown) => error instanceof PersistenceConflictError && error.code === 'PERSISTENCE_CONFLICT');
 });
 
 test('default persistence fails closed instead of pretending to be durable', async () => {
