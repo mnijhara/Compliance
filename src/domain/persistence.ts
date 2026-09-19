@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { assertAuditRecord, assertEvidenceRecord, assertTenantId } from './persistenceGuards';
 
 export interface EvidenceRecord {
   id: string;
@@ -45,22 +46,26 @@ export class MemoryCompliancePersistence implements CompliancePersistence {
   private readonly audit = new Map<string, AuditRecord[]>();
 
   async saveEvidence(record: EvidenceRecord): Promise<void> {
+    assertEvidenceRecord(record);
     const records = this.evidence.get(record.tenantId) ?? [];
-    records.push({ ...record });
+    records.push({ ...record, metadata: record.metadata ? { ...record.metadata } : undefined });
     this.evidence.set(record.tenantId, records);
   }
 
   async listEvidence(tenantId: string): Promise<EvidenceRecord[]> {
-    return (this.evidence.get(tenantId) ?? []).map(record => ({ ...record }));
+    assertTenantId(tenantId);
+    return (this.evidence.get(tenantId) ?? []).map(record => ({ ...record, metadata: record.metadata ? { ...record.metadata } : undefined }));
   }
 
   async appendAudit(record: AuditRecord): Promise<void> {
+    assertAuditRecord(record);
     const records = this.audit.get(record.tenantId) ?? [];
     records.push({ ...record, payload: { ...record.payload } });
     this.audit.set(record.tenantId, records);
   }
 
   async listAudit(tenantId: string): Promise<AuditRecord[]> {
+    assertTenantId(tenantId);
     return (this.audit.get(tenantId) ?? []).map(record => ({ ...record, payload: { ...record.payload } }));
   }
 }
