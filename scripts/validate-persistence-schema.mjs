@@ -70,6 +70,10 @@ const rpcRequired = [
   ['RPC security invoker', /security invoker/i],
   ['evidence RPC RLS path', /complyos_save_evidence[\s\S]*?insert into evidence_items/i],
   ['audit RPC RLS path', /complyos_append_audit[\s\S]*?insert into audit_events/i],
+  ['evidence tenant payload binding', /complyos_save_evidence[\s\S]*?record_tenant[\s\S]*?<> jwt_tenant/i],
+  ['audit tenant payload binding', /complyos_append_audit[\s\S]*?record_tenant[\s\S]*?<> jwt_tenant/i],
+  ['evidence invalid payload rejection', /complyos_save_evidence[\s\S]*?raise exception 'EVIDENCE_RECORD_INVALID'/i],
+  ['audit invalid payload rejection', /complyos_append_audit[\s\S]*?raise exception 'AUDIT_RECORD_INVALID'/i],
 ];
 
 for (const [name, pattern] of rpcRequired) {

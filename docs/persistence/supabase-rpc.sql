@@ -43,15 +43,38 @@ language plpgsql
 security invoker
 volatile
 as $$
+declare
+  jwt_tenant uuid;
+  record_tenant uuid;
 begin
   perform complyos_set_tenant_claim();
+  jwt_tenant := current_setting('request.jwt.claim.tenant_id', true)::uuid;
+
+  begin
+    record_tenant := (p_record->>'tenantId')::uuid;
+  exception when invalid_text_representation then
+    raise exception 'TENANT_ID_INVALID';
+  end;
+
+  if record_tenant is null or record_tenant <> jwt_tenant then
+    raise exception 'TENANT_CONTEXT_MISMATCH';
+  end if;
+
+  if nullif(trim(p_record->>'id'), '') is null
+     or nullif(trim(p_record->>'title'), '') is null
+     or nullif(trim(p_record->>'kind'), '') is null
+     or nullif(trim(p_record->>'status'), '') is null
+     or nullif(trim(p_record->>'collectedAt'), '') is null then
+    raise exception 'EVIDENCE_RECORD_INVALID';
+  end if;
+
   insert into evidence_items (
     id, tenant_id, kind, title, status, collected_at, expires_at, metadata
   ) values (
     (p_record->>'id')::uuid,
-    (p_record->>'tenantId')::uuid,
+    record_tenant,
     p_record->>'kind',
-    p_record->>'title',
+    trim(p_record->>'title'),
     p_record->>'status',
     (p_record->>'collectedAt')::timestamptz,
     nullif(p_record->>'expiresAt', '')::timestamptz,
@@ -79,17 +102,38 @@ language plpgsql
 security invoker
 volatile
 as $$
+declare
+  jwt_tenant uuid;
+  record_tenant uuid;
 begin
   perform complyos_set_tenant_claim();
+  jwt_tenant := current_setting('request.jwt.claim.tenant_id', true)::uuid;
+
+  begin
+    record_tenant := (p_record->>'tenantId')::uuid;
+  exception when invalid_text_representation then
+    raise exception 'TENANT_ID_INVALID';
+  end;
+
+  if record_tenant is null or record_tenant <> jwt_tenant then
+    raise exception 'TENANT_CONTEXT_MISMATCH';
+  end if;
+
+  if nullif(trim(p_record->>'id'), '') is null
+     or nullif(trim(p_record->>'actorId'), '') is null
+     or nullif(trim(p_record->>'action'), '') is null then
+    raise exception 'AUDIT_RECORD_INVALID';
+  end if;
+
   insert into audit_events (
     id, tenant_id, actor_id, action, entity_type, entity_id,
     evidence_ids, payload, created_at
   ) values (
     (p_record->>'id')::uuid,
-    (p_record->>'tenantId')::uuid,
-    p_record->>'actorId',
-    p_record->>'action',
-    coalesce(p_record->>'entityType', 'UNKNOWN'),
+    record_tenant,
+    trim(p_record->>'actorId'),
+    trim(p_record->>'action'),
+    coalesce(nullif(trim(p_record->>'entityType'), ''), 'UNKNOWN'),
     nullif(p_record->>'entityId', '')::uuid,
     coalesce(
       array(
@@ -105,5 +149,5 @@ end;
 $$;
 
 comment on function complyos_set_tenant_claim() is 'Derives and validates tenant_id from the authenticated JWT for RLS.';
-comment on function complyos_save_evidence(jsonb) is 'Tenant-scoped evidence insert; RLS remains authoritative.';
-comment on function complyos_append_audit(jsonb) is 'Tenant-scoped append-only audit insert; RLS and immutability remain authoritative.';
+comment on function complyos_save_evidence(jsonb) is 'Tenant-scoped evidence insert; rejects caller tenant mismatch before RLS.';
+comment on function complyos_append_audit(jsonb) is 'Tenant-scoped append-only audit insert; rejects caller tenant mismatch before RLS.';
