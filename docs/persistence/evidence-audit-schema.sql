@@ -42,21 +42,22 @@ create index if not exists audit_events_tenant_created_idx
 
 -- Row Level Security is fail-closed: application roles must set a trusted
 -- transaction-local tenant claim before reading or writing tenant records.
+-- Invalid/missing claims evaluate to NULL instead of raising a cast error.
 alter table tenants enable row level security;
 alter table evidence_items enable row level security;
 alter table audit_events enable row level security;
 
 create policy tenants_isolation on tenants
-  using (id = nullif(current_setting('request.jwt.claim.tenant_id', true), '')::uuid)
-  with check (id = nullif(current_setting('request.jwt.claim.tenant_id', true), '')::uuid);
+  using (id = case when current_setting('request.jwt.claim.tenant_id', true) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then current_setting('request.jwt.claim.tenant_id', true)::uuid end)
+  with check (id = case when current_setting('request.jwt.claim.tenant_id', true) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then current_setting('request.jwt.claim.tenant_id', true)::uuid end);
 
 create policy evidence_items_isolation on evidence_items
-  using (tenant_id = nullif(current_setting('request.jwt.claim.tenant_id', true), '')::uuid)
-  with check (tenant_id = nullif(current_setting('request.jwt.claim.tenant_id', true), '')::uuid);
+  using (tenant_id = case when current_setting('request.jwt.claim.tenant_id', true) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then current_setting('request.jwt.claim.tenant_id', true)::uuid end)
+  with check (tenant_id = case when current_setting('request.jwt.claim.tenant_id', true) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then current_setting('request.jwt.claim.tenant_id', true)::uuid end);
 
 create policy audit_events_isolation on audit_events
-  using (tenant_id = nullif(current_setting('request.jwt.claim.tenant_id', true), '')::uuid)
-  with check (tenant_id = nullif(current_setting('request.jwt.claim.tenant_id', true), '')::uuid);
+  using (tenant_id = case when current_setting('request.jwt.claim.tenant_id', true) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then current_setting('request.jwt.claim.tenant_id', true)::uuid end)
+  with check (tenant_id = case when current_setting('request.jwt.claim.tenant_id', true) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then current_setting('request.jwt.claim.tenant_id', true)::uuid end);
 
 comment on table evidence_items is 'Tenant-scoped evidence records; verified_at records when the authoritative source was last checked.';
 comment on table audit_events is 'Append-only application audit trail. Application roles should grant INSERT/SELECT only as required.';
