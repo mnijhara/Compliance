@@ -13,8 +13,12 @@ create table if not exists tenants (
 create table if not exists evidence_items (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references tenants(id) on delete cascade,
-  source_id text,
+  kind text not null default 'DOCUMENT',
   title text not null,
+  status text not null default 'REVIEW',
+  collected_at timestamptz not null default now(),
+  expires_at timestamptz,
+  source_id text,
   source_url text,
   authority text,
   verified_at timestamptz,
