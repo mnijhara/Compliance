@@ -5,6 +5,7 @@ export type SourceRegistryIssueCode =
   | 'EMPTY_FIELD'
   | 'INVALID_URL'
   | 'INVALID_VERIFICATION_DATE'
+  | 'FUTURE_VERIFICATION_DATE'
   | 'INVALID_EFFECTIVE_DATE';
 
 export interface SourceRegistryIssue {
@@ -35,7 +36,11 @@ function isIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`));
 }
 
-export function validateSourceRegistry(sources: ComplianceSource[]): SourceRegistryIntegrity {
+function isFutureDate(value: string, asOf = new Date()): boolean {
+  return Date.parse(`${value}T00:00:00Z`) > asOf.getTime();
+}
+
+export function validateSourceRegistry(sources: ComplianceSource[], asOf = new Date()): SourceRegistryIntegrity {
   const issues: SourceRegistryIssue[] = [];
   const seen = new Set<string>();
 
@@ -48,7 +53,11 @@ export function validateSourceRegistry(sources: ComplianceSource[]): SourceRegis
     }
 
     if (!isHttpsUrl(source.url)) issues.push({ sourceId: source.id, code: 'INVALID_URL', field: 'url' });
-    if (!isIsoDate(source.lastVerified)) issues.push({ sourceId: source.id, code: 'INVALID_VERIFICATION_DATE', field: 'lastVerified' });
+    if (!isIsoDate(source.lastVerified)) {
+      issues.push({ sourceId: source.id, code: 'INVALID_VERIFICATION_DATE', field: 'lastVerified' });
+    } else if (isFutureDate(source.lastVerified, asOf)) {
+      issues.push({ sourceId: source.id, code: 'FUTURE_VERIFICATION_DATE', field: 'lastVerified' });
+    }
     if (source.effectiveDate && !isIsoDate(source.effectiveDate)) issues.push({ sourceId: source.id, code: 'INVALID_EFFECTIVE_DATE', field: 'effectiveDate' });
   }
 
