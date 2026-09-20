@@ -35,11 +35,28 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
-      - name: Production runtime smoke test
+      - name: Production persistence fail-closed smoke test
         shell: bash
         run: |
           set -euo pipefail
-          NODE_ENV=production npm start > /tmp/complyos-server.log 2>&1 &
+          NODE_ENV=production npm start > /tmp/complyos-production.log 2>&1 &
+          SERVER_PID=$!
+          sleep 2
+          if kill -0 "$SERVER_PID" 2>/dev/null; then
+            echo "Production server unexpectedly stayed alive without durable persistence"
+            cat /tmp/complyos-production.log
+            kill "$SERVER_PID" 2>/dev/null || true
+            wait "$SERVER_PID" 2>/dev/null || true
+            exit 1
+          fi
+          cat /tmp/complyos-production.log
+          grep -q 'PRODUCTION_PERSISTENCE_NOT_READY' /tmp/complyos-production.log
+
+      - name: Development runtime smoke test and UI verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          NODE_ENV=development COMPLYOS_PERSISTENCE=memory npm start > /tmp/complyos-server.log 2>&1 &
           SERVER_PID=$!
           cleanup() {
             kill "$SERVER_PID" 2>/dev/null || true
@@ -50,7 +67,7 @@ jobs:
           ready=0
           for attempt in {1..30}; do
             if ! kill -0 "$SERVER_PID" 2>/dev/null; then
-              echo "Production server exited before becoming ready"
+              echo "Development server exited before becoming ready"
               cat /tmp/complyos-server.log
               exit 1
             fi
@@ -62,7 +79,7 @@ jobs:
           done
 
           if [ "$ready" -ne 1 ]; then
-            echo "Production server did not become ready within 30 seconds"
+            echo "Development server did not become ready within 30 seconds"
             cat /tmp/complyos-server.log
             exit 1
           fi
@@ -73,7 +90,7 @@ jobs:
           if (health.status !== 'ok') throw new Error(`Health endpoint status was ${health.status ?? 'missing'}`);
           if (!health.persistence) throw new Error('Health endpoint missing persistence contract');
           if (!health.sourceRegistryIntegrity) throw new Error('Health endpoint missing source registry integrity contract');
-          if (health.persistence.mode === 'memory') throw new Error('Production smoke test unexpectedly selected memory persistence');
+          if (health.persistence.mode !== 'memory') throw new Error(`Development smoke test selected unexpected persistence mode: ${health.persistence.mode ?? 'missing'}`);
           NODE
 
           curl --fail --silent --show-error -D /tmp/headers.txt -o /tmp/home.html http://127.0.0.1:3000/
@@ -84,5 +101,5 @@ jobs:
           grep -qi '^permissions-policy:' /tmp/headers.txt
           grep -qi '^x-request-id:' /tmp/headers.txt
 
-          echo "Running Playwright Chromium UI verification against the built production server"
+          echo "Running Playwright Chromium UI verification against the built application"
           npm run test:browser
