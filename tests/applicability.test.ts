@@ -10,7 +10,7 @@ const baseAssessment = (overrides: Partial<ApplicabilityAssessment> = {}): Appli
   status: 'APPLICABLE',
   sourceIds: ['delhi-labour-department'],
   evidenceIds: ['evidence-1'],
-  assessedAt: '2026-09-20T08:00:00.000Z',
+  assessedAt: '2026-09-18T23:00:00.000Z',
   assessedBy: 'reviewer-1',
   rationale: 'Human-reviewed assessment supported by the cited source and evidence.',
   ...overrides,
@@ -33,6 +33,16 @@ test('applicability gate blocks stale authority evidence', () => {
   assert.equal(result.status, 'BLOCKED');
   assert.ok(result.reasons.includes('AUTHORITATIVE_SOURCE_FRESHNESS_REQUIRED'));
   assert.deepEqual(result.verifiedSourceIds, []);
+});
+
+test('applicability gate blocks future-dated assessments', () => {
+  const result = evaluateApplicabilityAssessment(
+    baseAssessment({ assessedAt: '2026-09-19T00:00:00.000Z' }),
+    COMPLIANCE_SOURCES,
+    new Date('2026-09-18T23:59:59.999Z')
+  );
+  assert.equal(result.status, 'BLOCKED');
+  assert.ok(result.reasons.includes('ASSESSMENT_TIMESTAMP_IN_FUTURE'));
 });
 
 test('applicability gate blocks ambiguous or incomplete assessment states', () => {

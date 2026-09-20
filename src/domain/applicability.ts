@@ -42,6 +42,8 @@ export function evaluateApplicabilityAssessment(
 ): ApplicabilityGate {
   const reasons: string[] = [];
   const sourceById = new Map(sources.map(source => [source.id, source]));
+  const assessedAt = Date.parse(assessment.assessedAt);
+  const asOfTime = asOf.getTime();
   const verifiedSourceIds = assessment.sourceIds.filter(id => {
     const source = sourceById.get(id);
     return Boolean(source && isSourceFresh(source, asOf.toISOString().slice(0, 10)));
@@ -52,7 +54,10 @@ export function evaluateApplicabilityAssessment(
   if (!assessment.jurisdiction.trim()) reasons.push('JURISDICTION_REQUIRED');
   if (!assessment.assessedBy.trim()) reasons.push('HUMAN_REVIEWER_REQUIRED');
   if (!assessment.rationale.trim()) reasons.push('RATIONALE_REQUIRED');
-  if (!Number.isFinite(Date.parse(assessment.assessedAt))) reasons.push('INVALID_ASSESSMENT_TIMESTAMP');
+  if (!Number.isFinite(assessedAt)) reasons.push('INVALID_ASSESSMENT_TIMESTAMP');
+  if (Number.isFinite(assessedAt) && Number.isFinite(asOfTime) && assessedAt > asOfTime) {
+    reasons.push('ASSESSMENT_TIMESTAMP_IN_FUTURE');
+  }
   if (assessment.sourceIds.length === 0) reasons.push('AUTHORITATIVE_SOURCE_REQUIRED');
   if (assessment.evidenceIds.length === 0) reasons.push('SUPPORTING_EVIDENCE_REQUIRED');
   if (assessment.sourceIds.some(id => !sourceById.has(id))) reasons.push('SOURCE_REGISTRY_ID_UNKNOWN');
