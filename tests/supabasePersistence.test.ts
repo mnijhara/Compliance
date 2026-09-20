@@ -97,6 +97,38 @@ test('Supabase adapter rejects malformed successful RPC responses', async () => 
   );
 });
 
+test('Supabase adapter rejects non-array list responses', async () => {
+  const persistence = new SupabaseCompliancePersistence({
+    url: 'https://example.supabase.co',
+    anonKey: 'public-anon-key',
+    accessToken: () => ACCESS_TOKEN,
+    fetchImpl: async () => response({ rows: [] }),
+  });
+
+  await assert.rejects(
+    () => persistence.listEvidence(TENANT_ID),
+    /PERSISTENCE_RPC_INVALID_RESPONSE/,
+  );
+});
+
+test('Supabase adapter rejects malformed row objects', async () => {
+  const persistence = new SupabaseCompliancePersistence({
+    url: 'https://example.supabase.co',
+    anonKey: 'public-anon-key',
+    accessToken: () => ACCESS_TOKEN,
+    fetchImpl: async () => response([{
+      id: EVIDENCE_ID,
+      tenant_id: TENANT_ID,
+      kind: 'document',
+    }]),
+  });
+
+  await assert.rejects(
+    () => persistence.listEvidence(TENANT_ID),
+    /PERSISTENCE_RPC_INVALID_RESPONSE/,
+  );
+});
+
 test('Supabase adapter validates identifiers before network access', async () => {
   let networkCalls = 0;
   const persistence = new SupabaseCompliancePersistence({
