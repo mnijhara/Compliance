@@ -46,6 +46,9 @@ as $$
 declare
   jwt_tenant uuid;
   record_tenant uuid;
+  collected_at timestamptz;
+  expires_at timestamptz;
+  metadata_value jsonb;
 begin
   perform complyos_set_tenant_claim();
   jwt_tenant := current_setting('request.jwt.claim.tenant_id', true)::uuid;
@@ -68,6 +71,20 @@ begin
     raise exception 'EVIDENCE_RECORD_INVALID';
   end if;
 
+  begin
+    collected_at := (p_record->>'collectedAt')::timestamptz;
+    if nullif(trim(p_record->>'expiresAt'), '') is not null then
+      expires_at := (p_record->>'expiresAt')::timestamptz;
+    end if;
+  exception when others then
+    raise exception 'EVIDENCE_TIMESTAMP_INVALID';
+  end;
+
+  metadata_value := coalesce(p_record->'metadata', '{}'::jsonb);
+  if jsonb_typeof(metadata_value) <> 'object' then
+    raise exception 'EVIDENCE_METADATA_INVALID';
+  end if;
+
   insert into evidence_items (
     id, tenant_id, kind, title, status, collected_at, expires_at, metadata
   ) values (
@@ -76,9 +93,9 @@ begin
     p_record->>'kind',
     trim(p_record->>'title'),
     p_record->>'status',
-    (p_record->>'collectedAt')::timestamptz,
-    nullif(p_record->>'expiresAt', '')::timestamptz,
-    coalesce(p_record->'metadata', '{}'::jsonb)
+    collected_at,
+    expires_at,
+    metadata_value
   );
 end;
 $$;
@@ -107,6 +124,10 @@ declare
   jwt_tenant uuid;
   jwt_actor text;
   record_tenant uuid;
+  occurred_at timestamptz;
+  evidence_ids uuid[];
+  evidence_ids_json jsonb;
+  payload_json jsonb;
 begin
   perform complyos_set_tenant_claim();
   jwt_tenant := current_setting('request.jwt.claim.tenant_id', true)::uuid;
@@ -132,6 +153,31 @@ begin
     raise exception 'AUDIT_RECORD_INVALID';
   end if;
 
+  evidence_ids_json := coalesce(p_record->'evidenceIds', '[]'::jsonb);
+  if jsonb_typeof(evidence_ids_json) <> 'array' then
+    raise exception 'AUDIT_EVIDENCE_IDS_INVALID';
+  end if;
+
+  payload_json := coalesce(p_record->'payload', '{}'::jsonb);
+  if jsonb_typeof(payload_json) <> 'object' then
+    raise exception 'AUDIT_PAYLOAD_INVALID';
+  end if;
+
+  begin
+    if nullif(trim(p_record->>'occurredAt'), '') is not null then
+      occurred_at := (p_record->>'occurredAt')::timestamptz;
+    end if;
+    select coalesce(
+      array(
+        select value::uuid
+        from jsonb_array_elements_text(evidence_ids_json)
+      ),
+      '{}'::uuid[]
+    ) into evidence_ids;
+  exception when others then
+    raise exception 'AUDIT_PAYLOAD_INVALID';
+  end;
+
   insert into audit_events (
     id, tenant_id, actor_id, action, entity_type, entity_id,
     evidence_ids, payload, created_at
@@ -142,15 +188,9 @@ begin
     trim(p_record->>'action'),
     coalesce(nullif(trim(p_record->>'entityType'), ''), 'UNKNOWN'),
     nullif(p_record->>'entityId', '')::uuid,
-    coalesce(
-      array(
-        select value::uuid
-        from jsonb_array_elements_text(coalesce(p_record->'evidenceIds', '[]'::jsonb))
-      ),
-      '{}'::uuid[]
-    ),
-    coalesce(p_record->'payload', '{}'::jsonb),
-    coalesce((p_record->>'occurredAt')::timestamptz, now())
+    evidence_ids,
+    payload_json,
+    coalesce(occurred_at, now())
   );
 end;
 $$;

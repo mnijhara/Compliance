@@ -73,7 +73,11 @@ const rpcRequired = [
   ['evidence tenant payload binding', /complyos_save_evidence[\s\S]*?record_tenant[\s\S]*?<> jwt_tenant/i],
   ['audit tenant payload binding', /complyos_append_audit[\s\S]*?record_tenant[\s\S]*?<> jwt_tenant/i],
   ['evidence invalid payload rejection', /complyos_save_evidence[\s\S]*?raise exception 'EVIDENCE_RECORD_INVALID'/i],
+  ['evidence timestamp validation', /complyos_save_evidence[\s\S]*?raise exception 'EVIDENCE_TIMESTAMP_INVALID'/i],
+  ['evidence metadata object validation', /complyos_save_evidence[\s\S]*?jsonb_typeof\(metadata_value\) <> 'object'[\s\S]*?raise exception 'EVIDENCE_METADATA_INVALID'/i],
   ['audit invalid payload rejection', /complyos_append_audit[\s\S]*?raise exception 'AUDIT_RECORD_INVALID'/i],
+  ['audit evidence ids array validation', /complyos_append_audit[\s\S]*?jsonb_typeof\(evidence_ids_json\) <> 'array'[\s\S]*?raise exception 'AUDIT_EVIDENCE_IDS_INVALID'/i],
+  ['audit payload object validation', /complyos_append_audit[\s\S]*?jsonb_typeof\(payload_json\) <> 'object'[\s\S]*?raise exception 'AUDIT_PAYLOAD_INVALID'/i],
 ];
 
 for (const [name, pattern] of rpcRequired) {
