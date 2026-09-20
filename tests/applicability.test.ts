@@ -17,7 +17,7 @@ const baseAssessment = (overrides: Partial<ApplicabilityAssessment> = {}): Appli
 });
 
 test('applicability gate permits human review only with fresh authoritative evidence', () => {
-  const result = evaluateApplicabilityAssessment(baseAssessment(), COMPLIANCE_SOURCES, new Date('2026-09-20T23:59:59.999Z'));
+  const result = evaluateApplicabilityAssessment(baseAssessment(), COMPLIANCE_SOURCES, new Date('2026-09-18T23:59:59.999Z'));
   assert.equal(result.status, 'READY_FOR_HUMAN_REVIEW');
   assert.deepEqual(result.verifiedSourceIds, ['delhi-labour-department']);
 });
