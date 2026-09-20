@@ -2,8 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTenantBoundSupabaseAccessTokenProvider } from '../src/domain/supabaseTenantToken';
 
+function base64Url(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
 function jwt(tenantId: string): string {
-  const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const encode = (value: object) => base64Url(JSON.stringify(value));
   return `${encode({ alg: 'RS256', typ: 'JWT' })}.${encode({ tenant_id: tenantId })}.signature`;
 }
 
