@@ -47,3 +47,9 @@ test('tenant access rejects unsupported authentication methods', () => {
   assert.equal(result.allowed, false);
   assert.equal(result.code, 'AUTH_INVALID');
 });
+
+test('tenant access rejects malformed tenant roles', () => {
+  const result = validateTenantContext({ ...context, roles: ['hr_admin', 7] as never }, 'tenant-a', new Date('2026-09-06T00:30:00.000Z'));
+  assert.equal(result.allowed, false);
+  assert.equal(result.code, 'AUTH_INVALID');
+});

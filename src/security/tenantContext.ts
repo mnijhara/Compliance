@@ -17,6 +17,10 @@ function isNonEmpty(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function isRoles(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every(role => isNonEmpty(role));
+}
+
 function isSupportedAuthMethod(value: unknown): value is AuthenticatedTenantContext['authMethod'] {
   return value === 'oidc' || value === 'sso' || value === 'service_identity';
 }
@@ -34,7 +38,7 @@ export function validateTenantContext(
   now = new Date()
 ): TenantAccessResult {
   if (!context) return { allowed: false, code: 'AUTH_REQUIRED', reason: 'Authenticated tenant context is required.' };
-  if (!isNonEmpty(context.subjectId) || !isNonEmpty(context.tenantId) || !isNonEmpty(requestedTenantId) || !isNonEmpty(context.issuedAt) || !isNonEmpty(context.expiresAt) || !isSupportedAuthMethod(context.authMethod)) {
+  if (!isNonEmpty(context.subjectId) || !isNonEmpty(context.tenantId) || !isNonEmpty(requestedTenantId) || !isRoles(context.roles) || !isNonEmpty(context.issuedAt) || !isNonEmpty(context.expiresAt) || !isSupportedAuthMethod(context.authMethod)) {
     return { allowed: false, code: 'AUTH_INVALID', reason: 'Authenticated tenant context is incomplete.' };
   }
   const issuedAt = Date.parse(context.issuedAt);
