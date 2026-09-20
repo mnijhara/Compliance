@@ -126,6 +126,8 @@ declare
   record_tenant uuid;
   occurred_at timestamptz;
   evidence_ids uuid[];
+  evidence_ids_json jsonb;
+  payload_json jsonb;
 begin
   perform complyos_set_tenant_claim();
   jwt_tenant := current_setting('request.jwt.claim.tenant_id', true)::uuid;
@@ -146,9 +148,19 @@ begin
     raise exception 'TENANT_CONTEXT_MISMATCH';
   end if;
 
-  if nullif(trim(p_record->'id'), '') is null
+  if nullif(trim(p_record->>'id'), '') is null
      or nullif(trim(p_record->>'action'), '') is null then
     raise exception 'AUDIT_RECORD_INVALID';
+  end if;
+
+  evidence_ids_json := coalesce(p_record->'evidenceIds', '[]'::jsonb);
+  if jsonb_typeof(evidence_ids_json) <> 'array' then
+    raise exception 'AUDIT_EVIDENCE_IDS_INVALID';
+  end if;
+
+  payload_json := coalesce(p_record->'payload', '{}'::jsonb);
+  if jsonb_typeof(payload_json) <> 'object' then
+    raise exception 'AUDIT_PAYLOAD_INVALID';
   end if;
 
   begin
@@ -158,21 +170,13 @@ begin
     select coalesce(
       array(
         select value::uuid
-        from jsonb_array_elements_text(coalesce(p_record->'evidenceIds', '[]'::jsonb))
+        from jsonb_array_elements_text(evidence_ids_json)
       ),
       '{}'::uuid[]
     ) into evidence_ids;
   exception when others then
     raise exception 'AUDIT_PAYLOAD_INVALID';
   end;
-
-  if jsonb_typeof(coalesce(p_record->'evidenceIds', '[]'::jsonb)) <> 'array' then
-    raise exception 'AUDIT_EVIDENCE_IDS_INVALID';
-  end if;
-
-  if jsonb_typeof(coalesce(p_record->'payload', '{}'::jsonb)) <> 'object' then
-    raise exception 'AUDIT_PAYLOAD_INVALID';
-  end if;
 
   insert into audit_events (
     id, tenant_id, actor_id, action, entity_type, entity_id,
@@ -185,7 +189,7 @@ begin
     coalesce(nullif(trim(p_record->>'entityType'), ''), 'UNKNOWN'),
     nullif(p_record->>'entityId', '')::uuid,
     evidence_ids,
-    coalesce(p_record->'payload', '{}'::jsonb),
+    payload_json,
     coalesce(occurred_at, now())
   );
 end;
