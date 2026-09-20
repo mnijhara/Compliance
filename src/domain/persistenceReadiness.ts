@@ -14,3 +14,16 @@ export function getPersistenceReadiness(env: NodeJS.ProcessEnv = process.env): P
   }
   return { configured: false, durable: false, mode: 'unconfigured' };
 }
+
+/**
+ * Production deployments must not start while the system-of-record adapter is
+ * unavailable. This guard intentionally accepts no implicit fallback: memory
+ * and unconfigured persistence are suitable only for development/test flows.
+ */
+export function assertProductionPersistenceReady(env: NodeJS.ProcessEnv = process.env): void {
+  if (env.NODE_ENV !== 'production') return;
+  const readiness = getPersistenceReadiness(env);
+  if (!readiness.durable) {
+    throw new Error('PRODUCTION_PERSISTENCE_NOT_READY');
+  }
+}
