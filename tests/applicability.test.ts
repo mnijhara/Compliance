@@ -35,6 +35,16 @@ test('applicability gate blocks stale authority evidence', () => {
   assert.deepEqual(result.verifiedSourceIds, []);
 });
 
+test('applicability gate blocks future-dated assessments', () => {
+  const result = evaluateApplicabilityAssessment(
+    baseAssessment({ assessedAt: '2026-09-19T00:00:00.000Z' }),
+    COMPLIANCE_SOURCES,
+    new Date('2026-09-18T23:59:59.999Z')
+  );
+  assert.equal(result.status, 'BLOCKED');
+  assert.ok(result.reasons.includes('ASSESSMENT_TIMESTAMP_IN_FUTURE'));
+});
+
 test('applicability gate blocks ambiguous or incomplete assessment states', () => {
   const result = evaluateApplicabilityAssessment(baseAssessment({
     status: 'CONFLICTING_EVIDENCE',
