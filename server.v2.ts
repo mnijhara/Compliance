@@ -5,7 +5,7 @@ import { randomUUID } from 'crypto';
 import { assessCompliance, ComplianceProfile } from './src/complianceEngine';
 import { COMPLIANCE_SOURCES } from './src/data/complianceSources';
 import { evaluateRegulatorySources, checkRegulatorySourceReachability } from './src/domain/regulatoryMonitoring';
-import { getPersistenceReadiness } from './src/domain/persistenceReadiness';
+import { assertProductionPersistenceReady, getPersistenceReadiness } from './src/domain/persistenceReadiness';
 import { validateSourceRegistry } from './src/domain/sourceRegistry';
 import { validateAuditResult } from './src/domain/aiAuditSchema';
 import { createRateLimiter, isNonEmptyString, MAX_DOCUMENT_CHARS, MAX_MESSAGE_CHARS, MAX_POLICY_FIELD_CHARS } from './src/security/inputGuards';
@@ -164,6 +164,7 @@ app.post('/api/agent-run', (req, res) => {
 });
 
 async function startServer() {
+  assertProductionPersistenceReady();
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
