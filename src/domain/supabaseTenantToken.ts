@@ -24,7 +24,11 @@ export function createTenantBoundSupabaseAccessTokenProvider(
 
     let payload: JwtPayload;
     try {
-      const decoded = Buffer.from(parts[1], 'base64url').toString('utf8');
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+      const binary = atob(padded);
+      const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+      const decoded = new TextDecoder().decode(bytes);
       payload = JSON.parse(decoded) as JwtPayload;
     } catch {
       throw new Error('AUTH_TOKEN_INVALID');
