@@ -102,14 +102,13 @@ export async function generate(prompt: string, options: GenerateOptions = {}): P
       });
       clearTimeout(timeout);
       if (!response.ok) {
-        const errorBody = await response.text().catch(() => '');
         const retryable = response.status === 429 || response.status >= 500;
         if (retryable && attempt < maxAttempts) {
           await sleep(response.status === 429 ? 250 * attempt : 150 * attempt);
           continue;
         }
         markFailure(response.status);
-        throw new Error(`AI proxy ${response.status}: ${errorBody.slice(0, 300)}`);
+        throw new Error(`AI proxy request failed (${response.status})`);
       }
       const data = await response.json();
       const text = extractText(data);
