@@ -10,7 +10,7 @@ const baseAssessment = (overrides: Partial<ApplicabilityAssessment> = {}): Appli
   status: 'APPLICABLE',
   sourceIds: ['delhi-labour-department'],
   evidenceIds: ['evidence-1'],
-  assessedAt: '2026-09-20T08:00:00.000Z',
+  assessedAt: '2026-09-18T23:00:00.000Z',
   assessedBy: 'reviewer-1',
   rationale: 'Human-reviewed assessment supported by the cited source and evidence.',
   ...overrides,
