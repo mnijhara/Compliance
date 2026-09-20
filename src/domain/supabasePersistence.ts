@@ -73,8 +73,9 @@ export class SupabaseCompliancePersistence implements CompliancePersistence {
   async listEvidence(tenantId: string): Promise<EvidenceRecord[]> {
     assertTenantId(tenantId);
     this.assertUuid(tenantId, 'tenant');
-    const rows = await this.rpc<SupabaseEvidenceRow[]>('complyos_list_evidence', tenantId, {});
+    const rows = this.requireArrayResponse(await this.rpc<unknown>('complyos_list_evidence', tenantId, {}));
     return rows.map(row => {
+      if (!this.isEvidenceRow(row)) throw new Error('PERSISTENCE_RPC_INVALID_RESPONSE');
       this.assertUuid(row.tenant_id, 'returned tenant');
       if (row.tenant_id !== tenantId) throw new Error('TENANT_CONTEXT_MISMATCH');
       this.assertUuid(row.id, 'returned evidence');
@@ -108,8 +109,9 @@ export class SupabaseCompliancePersistence implements CompliancePersistence {
   async listAudit(tenantId: string): Promise<AuditRecord[]> {
     assertTenantId(tenantId);
     this.assertUuid(tenantId, 'tenant');
-    const rows = await this.rpc<SupabaseAuditRow[]>('complyos_list_audit', tenantId, {});
+    const rows = this.requireArrayResponse(await this.rpc<unknown>('complyos_list_audit', tenantId, {}));
     return rows.map(row => {
+      if (!this.isAuditRow(row)) throw new Error('PERSISTENCE_RPC_INVALID_RESPONSE');
       this.assertUuid(row.tenant_id, 'returned tenant');
       if (row.tenant_id !== tenantId) throw new Error('TENANT_CONTEXT_MISMATCH');
       this.assertUuid(row.id, 'returned audit');
@@ -122,6 +124,35 @@ export class SupabaseCompliancePersistence implements CompliancePersistence {
         payload: row.payload ?? {},
       };
     });
+  }
+
+  private requireArrayResponse(value: unknown): unknown[] {
+    if (!Array.isArray(value)) throw new Error('PERSISTENCE_RPC_INVALID_RESPONSE');
+    return value;
+  }
+
+  private isEvidenceRow(value: unknown): value is SupabaseEvidenceRow {
+    if (!value || typeof value !== 'object') return false;
+    const row = value as Record<string, unknown>;
+    return typeof row.id === 'string'
+      && typeof row.tenant_id === 'string'
+      && typeof row.kind === 'string'
+      && typeof row.title === 'string'
+      && typeof row.status === 'string'
+      && typeof row.collected_at === 'string'
+      && (row.expires_at === undefined || row.expires_at === null || typeof row.expires_at === 'string')
+      && (row.metadata === undefined || row.metadata === null || (typeof row.metadata === 'object' && !Array.isArray(row.metadata)));
+  }
+
+  private isAuditRow(value: unknown): value is SupabaseAuditRow {
+    if (!value || typeof value !== 'object') return false;
+    const row = value as Record<string, unknown>;
+    return typeof row.id === 'string'
+      && typeof row.tenant_id === 'string'
+      && typeof row.actor_id === 'string'
+      && typeof row.action === 'string'
+      && typeof row.created_at === 'string'
+      && (row.payload === undefined || row.payload === null || (typeof row.payload === 'object' && !Array.isArray(row.payload)));
   }
 
   private assertUuid(value: string, label: string): void {
