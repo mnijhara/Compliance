@@ -27,7 +27,10 @@ export function createTenantBoundSupabaseAccessTokenProvider(
       const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
       const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
       const binary = atob(padded);
-      const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+      }
       const decoded = new TextDecoder().decode(bytes);
       payload = JSON.parse(decoded) as JwtPayload;
     } catch {
