@@ -17,6 +17,11 @@ export function assertEvidenceRecord(record: EvidenceRecord): void {
   if (typeof record.status !== 'string' || !record.status.trim()) throw new Error('Evidence status is required');
   if (!Number.isFinite(Date.parse(record.collectedAt))) throw new Error('Evidence collectedAt must be an ISO date');
   if (record.expiresAt !== undefined && !Number.isFinite(Date.parse(record.expiresAt))) throw new Error('Evidence expiresAt must be an ISO date');
+  if (record.sourceId !== undefined && (typeof record.sourceId !== 'string' || !record.sourceId.trim())) throw new Error('Evidence sourceId must be a non-empty string');
+  if (record.sourceUrl !== undefined && !/^https:\/\/\S+$/i.test(record.sourceUrl)) throw new Error('Evidence sourceUrl must be HTTPS');
+  if (record.authority !== undefined && (typeof record.authority !== 'string' || !record.authority.trim())) throw new Error('Evidence authority must be a non-empty string');
+  if (record.verifiedAt !== undefined && !Number.isFinite(Date.parse(record.verifiedAt))) throw new Error('Evidence verifiedAt must be an ISO date');
+  if (record.contentHash !== undefined && (typeof record.contentHash !== 'string' || !record.contentHash.trim())) throw new Error('Evidence contentHash must be a non-empty string');
 }
 
 export function assertAuditRecord(record: AuditRecord): void {

@@ -9,6 +9,16 @@ export interface EvidenceRecord {
   status: string;
   collectedAt: string;
   expiresAt?: string;
+  /** Identifier of the authoritative source used to establish this evidence. */
+  sourceId?: string;
+  /** Canonical source URL captured with the evidence record. */
+  sourceUrl?: string;
+  /** Authority that issued the source, captured for audit traceability. */
+  authority?: string;
+  /** When the authoritative source was last verified for this evidence. */
+  verifiedAt?: string;
+  /** Hash of the evidence payload/document when one is available. */
+  contentHash?: string;
   metadata?: Record<string, unknown>;
 }
 
