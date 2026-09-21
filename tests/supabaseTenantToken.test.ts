@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { createTenantBoundSupabaseAccessTokenProvider } from '../src/domain/supabaseTenantToken';
+import { createTenantBoundSupabaseAccessTokenProvider } from '../src/domain/supabaseTenantToken.ts';
 
 function base64Url(value: string): string {
   const bytes = new TextEncoder().encode(value);
