@@ -1,5 +1,5 @@
-import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
+import test from 'node:test';
+import assert from 'node:assert/strict';
 import { createTenantBoundSupabaseAccessTokenProvider } from '../src/domain/supabaseTenantToken';
 
 function base64Url(value: string): string {
