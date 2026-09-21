@@ -19,6 +19,11 @@ type SupabaseEvidenceRow = {
   status: string;
   collected_at: string;
   expires_at?: string | null;
+  source_id?: string | null;
+  source_url?: string | null;
+  authority?: string | null;
+  verified_at?: string | null;
+  content_hash?: string | null;
   metadata?: Record<string, unknown> | null;
 };
 
@@ -66,6 +71,11 @@ export class SupabaseCompliancePersistence implements CompliancePersistence {
       status: record.status,
       collectedAt: record.collectedAt,
       expiresAt: record.expiresAt ?? null,
+      sourceId: record.sourceId ?? null,
+      sourceUrl: record.sourceUrl ?? null,
+      authority: record.authority ?? null,
+      verifiedAt: record.verifiedAt ?? null,
+      contentHash: record.contentHash ?? null,
       metadata: record.metadata ?? {},
     } });
   }
@@ -87,6 +97,11 @@ export class SupabaseCompliancePersistence implements CompliancePersistence {
         status: row.status,
         collectedAt: row.collected_at,
         ...(row.expires_at ? { expiresAt: row.expires_at } : {}),
+        ...(row.source_id ? { sourceId: row.source_id } : {}),
+        ...(row.source_url ? { sourceUrl: row.source_url } : {}),
+        ...(row.authority ? { authority: row.authority } : {}),
+        ...(row.verified_at ? { verifiedAt: row.verified_at } : {}),
+        ...(row.content_hash ? { contentHash: row.content_hash } : {}),
         metadata: row.metadata ?? {},
       };
     });
@@ -141,6 +156,11 @@ export class SupabaseCompliancePersistence implements CompliancePersistence {
       && typeof row.status === 'string'
       && typeof row.collected_at === 'string'
       && (row.expires_at === undefined || row.expires_at === null || typeof row.expires_at === 'string')
+      && (row.source_id === undefined || row.source_id === null || typeof row.source_id === 'string')
+      && (row.source_url === undefined || row.source_url === null || typeof row.source_url === 'string')
+      && (row.authority === undefined || row.authority === null || typeof row.authority === 'string')
+      && (row.verified_at === undefined || row.verified_at === null || typeof row.verified_at === 'string')
+      && (row.content_hash === undefined || row.content_hash === null || typeof row.content_hash === 'string')
       && (row.metadata === undefined || row.metadata === null || (typeof row.metadata === 'object' && !Array.isArray(row.metadata)));
   }
 
