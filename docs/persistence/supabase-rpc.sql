@@ -48,6 +48,7 @@ declare
   record_tenant uuid;
   collected_at timestamptz;
   expires_at timestamptz;
+  verified_at timestamptz;
   metadata_value jsonb;
 begin
   perform complyos_set_tenant_claim();
@@ -76,6 +77,9 @@ begin
     if nullif(trim(p_record->>'expiresAt'), '') is not null then
       expires_at := (p_record->>'expiresAt')::timestamptz;
     end if;
+    if nullif(trim(p_record->>'verifiedAt'), '') is not null then
+      verified_at := (p_record->>'verifiedAt')::timestamptz;
+    end if;
   exception when others then
     raise exception 'EVIDENCE_TIMESTAMP_INVALID';
   end;
@@ -86,7 +90,8 @@ begin
   end if;
 
   insert into evidence_items (
-    id, tenant_id, kind, title, status, collected_at, expires_at, metadata
+    id, tenant_id, kind, title, status, collected_at, expires_at,
+    source_id, source_url, authority, verified_at, content_hash, metadata
   ) values (
     (p_record->>'id')::uuid,
     record_tenant,
@@ -95,6 +100,11 @@ begin
     p_record->>'status',
     collected_at,
     expires_at,
+    nullif(trim(p_record->>'sourceId'), ''),
+    nullif(trim(p_record->>'sourceUrl'), ''),
+    nullif(trim(p_record->>'authority'), ''),
+    verified_at,
+    nullif(trim(p_record->>'contentHash'), ''),
     metadata_value
   );
 end;
