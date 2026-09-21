@@ -26,13 +26,7 @@ export function createTenantBoundSupabaseAccessTokenProvider(
     try {
       const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
       const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
-      const decodeBase64 = (globalThis as typeof globalThis & { atob: (value: string) => string }).atob;
-      const binary = decodeBase64(padded);
-      let utf8 = '';
-      for (let index = 0; index < binary.length; index += 1) {
-        utf8 += `%${binary.charCodeAt(index).toString(16).padStart(2, '0')}`;
-      }
-      const decoded = decodeURIComponent(utf8);
+      const decoded = Buffer.from(padded, 'base64').toString('utf8');
       payload = JSON.parse(decoded) as JwtPayload;
     } catch {
       throw new Error('AUTH_TOKEN_INVALID');
