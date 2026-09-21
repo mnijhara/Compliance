@@ -12,7 +12,7 @@
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
+    "lint": "tsc --noEmit && tsc -p tsconfig.tests.json --noEmit",
     "test": "for file in tests/*.test.ts; do node --import tsx --test \"$file\" || exit 1; done",
     "test:browser": "node scripts/browser-smoke.mjs",
     "test:compliance-sources": "node scripts/validate-compliance-sources.mjs",
@@ -34,8 +34,7 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
-    "tailwindcss": "^4.1.14",
+    "tailwindcss": "^4.1.21",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "@types/express": "^4.17.21",
