@@ -1,4 +1,5 @@
 import { SupabaseCompliancePersistence, type SupabasePersistenceConfig } from './supabasePersistence';
+import { createTenantBoundSupabaseAccessTokenProvider } from './supabaseTenantToken';
 
 export interface SupabasePersistenceEnvironment {
   COMPLYOS_PERSISTENCE?: string;
@@ -30,7 +31,7 @@ export function createSupabasePersistence(
   return new SupabaseCompliancePersistence({
     url: env.SUPABASE_URL,
     anonKey: env.SUPABASE_ANON_KEY,
-    accessToken,
+    accessToken: createTenantBoundSupabaseAccessTokenProvider(accessToken),
     ...(fetchImpl ? { fetchImpl } : {}),
   });
 }
