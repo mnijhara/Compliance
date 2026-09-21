@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 export type SupabaseAccessTokenProvider = (tenantId: string) => Promise<string> | string;
 
 interface JwtPayload {
