@@ -20,7 +20,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     authority: 'Ministry of Labour & Employment, Government of India',
     jurisdiction: 'India - National',
     url: 'https://www.labour.gov.in/static/uploads/2026/02/83978455025732b99b0165def80ab171.pdf',
-    lastVerified: '2026-09-06',
+    lastVerified: '2026-10-14',
     notes: 'Employer reference handbook; enacted Codes and applicable Rules prevail if there is a discrepancy.'
   },
   {
@@ -28,9 +28,9 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     title: 'Implementation of the Four Labour Codes',
     authority: 'Ministry of Labour & Employment / Press Information Bureau',
     jurisdiction: 'India - National',
-    url: 'https://labour.gov.in/sites/default/files/pib2200433.pdf',
+    url: 'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2209767&lang=1&reg=6',
     effectiveDate: '2025-11-21',
-    lastVerified: '2026-09-06',
+    lastVerified: '2026-10-14',
     notes: 'Official government release confirming implementation of the four Labour Codes from 21 November 2025.'
   },
   {
@@ -40,7 +40,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - National',
     url: 'https://www.labour.gov.in/static/uploads/2026/05/6eb0c35ba63b776487a025e5123b6b12.pdf',
     effectiveDate: '2026-05-08',
-    lastVerified: '2026-09-06',
+    lastVerified: '2026-10-14',
     notes: 'Official Gazette rules. State rules and establishment-specific applicability must also be checked.'
   },
   {
@@ -50,7 +50,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - National',
     url: 'https://www.labour.gov.in/static/uploads/2026/05/49aa9b62c2125499c37399b90e969d67.pdf',
     effectiveDate: '2026-05-08',
-    lastVerified: '2026-09-06',
+    lastVerified: '2026-10-14',
     notes: 'Official Gazette rules superseding the listed central rules; current notifications and state provisions remain relevant.'
   },
   {
@@ -60,7 +60,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - National',
     url: 'https://www.labour.gov.in/static/uploads/2026/05/f05a2c220dcdec0ea9c55e84d9ff791f.pdf',
     effectiveDate: '2026-05-08',
-    lastVerified: '2026-09-06',
+    lastVerified: '2026-10-14',
     notes: 'Official Gazette rules under the Industrial Relations Code, 2020.'
   },
   {
@@ -70,7 +70,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - National',
     url: 'https://www.labour.gov.in/static/uploads/2026/05/ee246f790cad0b8e99c3828f34fa09a6.pdf',
     effectiveDate: '2026-05-08',
-    lastVerified: '2026-09-06',
+    lastVerified: '2026-10-14',
     notes: 'Official Gazette rules. State-specific Shops/Establishments and other applicable rules must also be verified.'
   },
   {
@@ -79,7 +79,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     authority: 'Ministry of Labour & Employment, Government of India',
     jurisdiction: 'India - National',
     url: 'https://labour.gov.in/sites/default/files/arenglish2024-25_compressed.pdf',
-    lastVerified: '2026-09-06',
+    lastVerified: '2026-10-14',
     notes: 'Background and implementation context; not a substitute for operative legislation or rules.'
   },
   {
@@ -88,7 +88,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     authority: 'Ministry of Women & Child Development, Government of India',
     jurisdiction: 'India - National',
     url: 'https://www.spniwcd.wcd.gov.in/legislation1',
-    lastVerified: '2026-09-06',
+    lastVerified: '2026-10-14',
     notes: 'Official WCD legislation repository. Use primary legislation and notified rules for legal conclusions.'
   },
   {
@@ -106,7 +106,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     authority: 'Labour Department, Government of NCT of Delhi',
     jurisdiction: 'India - Delhi',
     url: 'https://labour.delhi.gov.in/labour/delhi-shops-and-establishments-act1954',
-    lastVerified: '2026-09-06',
+    lastVerified: '2026-10-14',
     notes: 'Official Delhi departmental publication. Current notifications and exemptions must be checked before applying a provision.'
   },
   {
@@ -115,7 +115,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     authority: 'Government of Karnataka, Department of Labour',
     jurisdiction: 'India - Karnataka',
     url: 'https://kodagu.nic.in/en/department-of-labour/',
-    lastVerified: '2026-09-06',
+    lastVerified: '2026-10-14',
     notes: 'Official Karnataka government labour-department page. Use current state Gazette and department notifications for operative rules.'
   },
   {
@@ -124,7 +124,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     authority: 'Government of Karnataka, Labour Department / Karnataka Labour Welfare Board',
     jurisdiction: 'India - Karnataka',
     url: 'https://klwb.karnataka.gov.in/storage/pdf-files/NewLabourDept_English_Final_2%2C2025-26.pdf',
-    lastVerified: '2026-09-06',
+    lastVerified: '2026-10-14',
     notes: 'Official Karnataka Labour Welfare Board publication. Use operative Act, Rules and Gazette notifications for conclusions.'
   },
   {
@@ -138,7 +138,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
   }
 ];
 
-export const COMPLIANCE_SOURCE_VERSION = '2026-09-06';
+export const COMPLIANCE_SOURCE_VERSION = '2026-10-14';
 
 export function isSourceFresh(source: ComplianceSource, asOf = COMPLIANCE_SOURCE_VERSION): boolean {
   const verifiedAt = Date.parse(source.lastVerified);
