@@ -97,8 +97,8 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     authority: 'Labour Commissioner, Government of NCT of Delhi',
     jurisdiction: 'India - Delhi',
     url: 'https://labour.delhi.gov.in/',
-    lastVerified: '2026-09-20',
-    notes: 'Official Delhi labour authority portal. Portal page checked 20 September 2026; the site itself reports Last Updated 18/09/2026. Current Acts, Rules, Gazette notifications and department notices must still be checked for each control.'
+    lastVerified: '2026-10-14',
+    notes: 'Official Delhi labour authority portal. Portal availability and current official notices checked 14 October 2026; current Acts, Rules, Gazette notifications and department notices must still be checked for each control.'
   },
   {
     id: 'delhi-shops-establishments-act',
@@ -134,7 +134,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - Maharashtra',
     url: 'https://mahakamgar.maharashtra.gov.in/',
     lastVerified: '2026-09-20',
-    notes: 'Official Maharashtra labour authority portal. Portal checked 20 September 2026; it publishes Labour Code FAQs/material and state labour-law resources. Operative notifications, rules and orders must still be mapped to each control before a legal conclusion.'
+    notes: 'Official Maharashtra labour authority portal. Portal and current labour-code notices checked 14 October 2026; it publishes Labour Code FAQs/material and state labour-law resources. Operative notifications, rules and orders must still be mapped to each control before a legal conclusion.'
   }
 ];
 
