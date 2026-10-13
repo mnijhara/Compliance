@@ -19,7 +19,7 @@ if (!Number.isFinite(retries) || retries < 0) {
 }
 
 const text = await readFile(sourcePath, 'utf8');
-const sourceBlocks = [...text.matchAll(/\{\n\s*id: '([^']+)',([\s\S]*?)\n\s*\},/g)];
+const sourceBlocks = [...text.matchAll(/\{\n\s*id: '([^']+)',([\s\S]*?)\n\s*\},?/g)];
 if (sourceBlocks.length === 0) throw new Error('No compliance sources found');
 
 const now = new Date();
@@ -63,6 +63,21 @@ async function probe(url) {
       let response = await request(url, 'HEAD');
       if (!response.ok || response.status === 405 || response.status === 501) {
         response = await request(url, 'GET');
+      }
+
+      // Some official government portals/CDNs return 403 to automated CI probes
+      // while the source is available in normal browsers. Record that separately
+      // from a missing or unreachable source; never claim its content was fetched.
+      if (response.status === 403) {
+        lastResult = {
+          ok: true,
+          accessRestricted: true,
+          status: response.status,
+          finalUrl: response.url,
+          authorityPreserved: response.url ? sameAuthorityHost(url, response.url) : false,
+          attempts: attempt + 1,
+        };
+        return lastResult;
       }
 
       lastResult = {
@@ -116,6 +131,8 @@ for (const [, id, body] of sourceBlocks) {
     lastVerified,
     fresh,
     reachable: probeResult.ok,
+    contentAccessible: probeResult.ok && !probeResult.accessRestricted,
+    accessRestricted: probeResult.accessRestricted ?? false,
     authorityPreserved: probeResult.authorityPreserved ?? false,
     httpStatus: probeResult.status ?? null,
     finalUrl: probeResult.finalUrl ?? null,
@@ -137,7 +154,8 @@ await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 const stale = results.filter((source) => !source.fresh);
 const unavailable = results.filter((source) => !source.reachable);
 const authorityDrift = results.filter((source) => source.reachable && !source.authorityPreserved);
-console.log(JSON.stringify({ checkedAt: report.checkedAt, sourceCount: report.sourceCount, stale: stale.map((s) => s.id), unavailable: unavailable.map((s) => s.id), authorityDrift: authorityDrift.map((s) => ({ id: s.id, finalUrl: s.finalUrl })) }, null, 2));
+const accessRestricted = results.filter((source) => source.accessRestricted);
+console.log(JSON.stringify({ checkedAt: report.checkedAt, sourceCount: report.sourceCount, stale: stale.map((s) => s.id), unavailable: unavailable.map((s) => ({ id: s.id, httpStatus: s.httpStatus, error: s.error })), accessRestricted: accessRestricted.map((s) => ({ id: s.id, httpStatus: s.httpStatus })), authorityDrift: authorityDrift.map((s) => ({ id: s.id, finalUrl: s.finalUrl })) }, null, 2));
 
 if (stale.length || (strictReachability && unavailable.length) || (strictAuthority && authorityDrift.length)) {
   console.error(`Compliance source health check failed: ${stale.length} stale, ${strictReachability ? unavailable.length : 0} unavailable, ${strictAuthority ? authorityDrift.length : 0} authority-drifted.`);
