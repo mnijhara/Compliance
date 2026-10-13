@@ -98,7 +98,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - Delhi',
     url: 'https://labour.delhi.gov.in/',
     lastVerified: '2026-10-14',
-    notes: 'Official Delhi labour authority portal. Live portal checked 18 September 2026; current Acts, Rules, Gazette notifications and department notices must still be checked for each control.'
+    notes: 'Official Delhi labour authority portal. Portal availability and current official notices checked 14 October 2026; current Acts, Rules, Gazette notifications and department notices must still be checked for each control.'
   },
   {
     id: 'delhi-shops-establishments-act',
@@ -134,7 +134,7 @@ export const COMPLIANCE_SOURCES: ComplianceSource[] = [
     jurisdiction: 'India - Maharashtra',
     url: 'https://mahakamgar.maharashtra.gov.in/',
     lastVerified: '2026-10-14',
-    notes: 'Official Maharashtra labour authority portal. Live portal checked 18 September 2026; current state rules, notifications and orders must be mapped to each control.'
+    notes: 'Official Maharashtra labour authority portal. Portal and current labour-code notices checked 14 October 2026; current state rules, notifications and orders must be mapped to each control.'
   }
 ];
 
