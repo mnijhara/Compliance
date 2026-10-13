@@ -9,7 +9,7 @@ if (!versionMatch) throw new Error('COMPLIANCE_SOURCE_VERSION is missing');
 const registryVersion = Date.parse(versionMatch[1]);
 if (!Number.isFinite(registryVersion)) throw new Error(`Invalid COMPLIANCE_SOURCE_VERSION: ${versionMatch[1]}`);
 
-const sourceBlocks = [...text.matchAll(/\{\n\s*id: '([^']+)',([\s\S]*?)\n\s*\},/g)];
+const sourceBlocks = [...text.matchAll(/\{\n\s*id: '([^']+)',([\s\S]*?)\n\s*\},?/g)];
 if (sourceBlocks.length === 0) throw new Error('No compliance sources found');
 
 const ids = new Set();
